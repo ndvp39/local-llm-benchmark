@@ -1,0 +1,161 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+# ----------------------------------------------------------------------------
+# Project metadata
+# ----------------------------------------------------------------------------
+[project]
+name = "on-prem-llm-lab"
+version = "1.0.0"
+description = "On-Premises LLM benchmark lab: AirLLM + Quantization vs Anthropic API vs Cloud GPU, with QLoRA fine-tune extension."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "ndvp39", email = "ndvp39@gmail.com" }]
+keywords = ["llm", "airllm", "quantization", "qlora", "benchmark", "on-premises"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Runtime dependencies (PRD §6.2).
+# Constitution §6.2: no hard-coded version pins for *prices* etc., but library
+# pins live here (single source of truth — pyproject.toml).
+dependencies = [
+    # Core inference / model handling
+    "transformers>=4.44",
+    "accelerate>=0.33",
+    "torch>=2.2",
+    "safetensors>=0.4.3",
+    "huggingface_hub>=0.24",
+    "airllm>=2.11",
+    # Anthropic — sole runtime API provider (ADR-011)
+    "anthropic>=0.34",
+    # QLoRA extension (ADR-014)
+    "peft>=0.12",
+    "bitsandbytes>=0.43 ; platform_system != 'Darwin'",
+    "datasets>=2.20",
+    # Measurement & analysis
+    "psutil>=5.9",
+    "pynvml>=11.5 ; platform_system != 'Darwin'",
+    "matplotlib>=3.8",
+    "pandas>=2.2",
+    # Config / typing
+    "pydantic>=2.7",
+    # CLI (delegate-only per ADR + constitution §3.1)
+    "typer>=0.12",
+    # Env loading for .env / .env-example (constitution §6.4)
+    "python-dotenv>=1.0",
+]
+
+# CLI entry point — delegate-only per ADR-002 / constitution §3.1
+[project.scripts]
+on-prem-llm = "on_prem_llm_lab.cli.main:app"
+
+# ----------------------------------------------------------------------------
+# Dependency groups (PEP 735)
+# ----------------------------------------------------------------------------
+# Dev tools live in a PEP 735 dependency-group so they're auto-installed by
+# `uv sync` via the `default-groups` setting below, but NOT shipped to PyPI
+# users via wheel metadata. Constitution §6.1 / §5.2 require these gates.
+[dependency-groups]
+dev = [
+    "ruff>=0.6.0",
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.108",
+]
+
+# ----------------------------------------------------------------------------
+# uv configuration
+# ----------------------------------------------------------------------------
+# uv is the sole package manager (constitution §7.4 / ADR-001).
+# `default-groups = ["dev"]` makes `uv sync` install the dev group too.
+[tool.uv]
+default-groups = ["dev"]
+
+# ----------------------------------------------------------------------------
+# Hatch build target — packages live under src/ layout (constitution §1.4)
+# ----------------------------------------------------------------------------
+[tool.hatch.build.targets.wheel]
+packages = ["src/on_prem_llm_lab"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/", "tests/", "config/", "docs/", "README.md", "pyproject.toml"]
+
+# ----------------------------------------------------------------------------
+# Ruff — zero violations gate (constitution §6.1)
+# ----------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["notebooks/**", "results/**", "figures/**", "data/**"]
+
+[tool.ruff.lint]
+# Active rule categories per constitution §6.1:
+# E  — PEP 8 errors            F — Pyflakes
+# W  — PEP 8 warnings          I — isort import ordering
+# N  — pep8-naming             UP — pyupgrade (py3.11+)
+# B  — flake8-bugbear          C4 — comprehensions
+# SIM — expression simplification
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]  # line length is governed by `line-length = 100` above
+
+[tool.ruff.lint.per-file-ignores]
+# Test files may use longer / unusual names and fixtures.
+"tests/**/*.py" = ["N802", "N803"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+# ----------------------------------------------------------------------------
+# Pytest + coverage — ≥85% gate (constitution §5.2)
+# ----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+]
+markers = [
+    "integration: end-to-end tests that may touch local FS / network mocks",
+    "slow: tests that take >2s",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "src/main.py",
+    "*/tests/*",
+    "src/**/gui/*",
+]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.coverage.xml]
+output = "results/coverage.xml"

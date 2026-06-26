@@ -1,0 +1,74 @@
+# =============================================================================
+# on-prem-llm-lab — .gitignore
+# Constitution §6.4 (secrets), §7.4 (uv-managed venv), PLAN §9.4 (logs, shards).
+# Early-fulfilled in T-1.7 to enable the first commit safely.
+# =============================================================================
+
+# --- Python build / bytecode --------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- uv-managed virtual environment -------------------------------------------
+.venv/
+venv/
+
+# --- Secrets (constitution §6.4) ----------------------------------------------
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+credentials.json
+*.credentials
+*_secret
+*_secret.*
+
+# --- Test / lint / coverage artifacts -----------------------------------------
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+
+# --- Editor / IDE / OS noise --------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Agent / assistant session state (do not track) ---------------------------
+.claude/
+.cursor/
+.aider*
+
+# --- Project artifacts (kept as folders via .gitkeep) -------------------------
+# Runtime logs from gatekeeper / sampler / manifests
+results/logs/*
+!results/logs/.gitkeep
+
+# AirLLM layer shard cache (ADR-005, ADR-015) — path is config-driven; common
+# locations excluded here as a safety net.
+airllm_shards/
+D:/airllm_shards/
+
+# HardwareScanner / report-assembler backups (ADR-015)
+*.bak
+
+# Hugging Face cache spillover (if HF_HUB_CACHE points into the repo)
+.cache/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
