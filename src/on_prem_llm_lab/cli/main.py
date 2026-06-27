@@ -14,7 +14,11 @@ from typing import Annotated
 
 import typer
 
-from on_prem_llm_lab.sdk import OnPremLlmSDK
+from on_prem_llm_lab import (
+    EnvironmentNotInitializedError,
+    OnPremLlmSDK,
+    PlumbingStageError,
+)
 
 app = typer.Typer(
     help="On-Premises LLM benchmark lab CLI.",
@@ -78,6 +82,37 @@ def initialize(
         for f in result.failures:
             typer.echo(f"  - {f}")
     raise typer.Exit(0 if result.ok else 1)
+
+
+@app.command("run-plumbing-test")
+def run_plumbing_test(
+    config: _ConfigOpt = _DEFAULT_CONFIG,
+    repo_root: _RepoRootOpt = None,
+) -> None:
+    """ADR-010 pre-flight on the small/Q2 plumbing model (T-2a.2)."""
+    sdk = OnPremLlmSDK(
+        config_path=config,
+        env=dict(os.environ),
+        repo_root=repo_root or Path.cwd(),
+    )
+    try:
+        result = sdk.run_plumbing_test()
+    except EnvironmentNotInitializedError as exc:
+        typer.echo(f"FAIL: env not initialised -- {exc}")
+        raise typer.Exit(1) from exc
+    except PlumbingStageError as exc:
+        typer.echo(f"FAIL: plumbing stage '{exc.stage}' failed")
+        typer.echo(f"  message: {exc}")
+        if exc.result.remediation_hint:
+            typer.echo(f"  remediation: {exc.result.remediation_hint}")
+        if exc.result.manifest_path:
+            typer.echo(f"  partial manifest: {exc.result.manifest_path}")
+        raise typer.Exit(1) from exc
+    typer.echo("OK: plumbing test passed")
+    typer.echo(f"  manifest: {result.manifest_path}")
+    for name, outcome in result.stages.items():
+        typer.echo(f"  {name}: {outcome.status} ({outcome.duration_s:.3f}s)")
+    raise typer.Exit(0)
 
 
 if __name__ == "__main__":

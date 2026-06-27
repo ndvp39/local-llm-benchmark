@@ -1,4 +1,8 @@
-"""Tests for ``OnPremLlmSDK`` (T-1.12 constructor + T-1.14 scan/init)."""
+"""Tests for ``OnPremLlmSDK`` constructor + scan/init wiring (T-1.12 + T-1.14).
+
+T-2a.2 plumbing-test wiring is exercised in ``test_sdk_plumbing.py`` — split out
+so each file stays comfortably under the 150 LOC cap.
+"""
 
 from __future__ import annotations
 

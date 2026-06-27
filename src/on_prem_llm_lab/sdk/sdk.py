@@ -2,18 +2,13 @@
 
 Constitution §3.1 / ADR-002: CLI, notebooks, and any future GUI MUST go
 through this facade and are forbidden to import :mod:`services`, :mod:`backends`,
-or :mod:`shared` directly.
-
-T-1.14 wired :meth:`scan_hardware` and :meth:`initialize_environment` on top
-of the original T-1.12 stub. T-1.16 (ADR-016) adds the env-init precondition
-guard and stubs the seven downstream methods listed in PLAN §3.1 so the guard
-is enforced uniformly *before* their real bodies arrive in M2a..M6. Future
-tasks replace each ``NotImplementedError`` body in place; the guard line at
-the top of every method stays.
+or :mod:`shared` directly. Per-method history (T-1.12 / T-1.14 / T-1.16 / T-2a.*)
+lives in ``docs/TODO.md``; every downstream method opens with the env-init guard.
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,9 +16,20 @@ from typing import Any, NoReturn
 
 from on_prem_llm_lab.services.hardware_scanner import HardwareScanner
 from on_prem_llm_lab.services.hardware_scanner_types import HardwareScanResult
+from on_prem_llm_lab.services.plumbing_default_stages import build_default_stages
+from on_prem_llm_lab.services.plumbing_test_runner import (
+    PlumbingResult,
+    PlumbingStageError,
+    PlumbingTestRunner,
+    StageCallable,
+)
 from on_prem_llm_lab.shared.env_guard import (
     EnvironmentNotInitializedError,
     require_initialized_env,
+)
+from on_prem_llm_lab.shared.plumbing_guard import (
+    PlumbingNotRunError,
+    require_current_plumbing,
 )
 
 
@@ -83,10 +89,34 @@ class OnPremLlmSDK:
         """ADR-016 guard — call from every downstream method as its first action."""
         require_initialized_env(self.config_path)
 
-    def run_plumbing_test(self) -> NoReturn:
-        """ADR-010 pre-flight on small/Q2 model. Implementation: T-2a.1 (M2a)."""
+    def _require_current_plumbing(self) -> Path:
+        """ADR-010 guard for ``run_sweep`` — caller MUST handle ``skip_plumbing``."""
+        return require_current_plumbing(self.repo_root / "results")
+
+    def run_plumbing_test(
+        self,
+        *,
+        stages: Mapping[str, StageCallable] | None = None,
+    ) -> PlumbingResult:
+        """ADR-010 pre-flight on the small/Q2 model (T-2a.2).
+
+        ``stages`` is an injection seam for tests; production callers leave it
+        ``None`` so :func:`build_default_stages` wires real HF + AirLLM + psutil
+        closures from config. The runner writes ``results/plumbing_<ts>.json``
+        and raises :class:`PlumbingStageError` on any stage failure.
+        """
         self._require_initialized_env()
-        raise NotImplementedError("T-2a.1 lands in M2a.")
+        cfg = json.loads(self.config_path.read_text(encoding="utf-8"))
+        results_dir = self.repo_root / "results"
+        built_stages = stages or build_default_stages(
+            cfg, results_dir, hf_token=self.env.get("HF_TOKEN")
+        )
+        runner = PlumbingTestRunner(
+            plumbing_test_model=cfg["plumbing_test_model"],
+            stages=built_stages,
+            results_dir=results_dir,
+        )
+        return runner.run()
 
     def run_baseline(self, target_label: str, prompt: str, **kwargs: Any) -> NoReturn:
         """Direct back-end run on an oversized target. Implementation: T-2.10 (M2b)."""
@@ -98,9 +128,22 @@ class OnPremLlmSDK:
         self._require_initialized_env()
         raise NotImplementedError("T-3.1 lands in M3.")
 
-    def run_sweep(self, prompts: list[str], **kwargs: Any) -> NoReturn:
-        """target × quant × backend sweep. Implementation: T-3.5 (M3)."""
+    def run_sweep(
+        self,
+        prompts: list[str],
+        *,
+        skip_plumbing: bool = False,
+        **kwargs: Any,
+    ) -> NoReturn:
+        """target × quant × backend sweep. Implementation: T-3.5 (M3).
+
+        Precondition (T-2a.4 · ADR-010): refuses to start unless a successful
+        plumbing manifest exists under ``results/``. Pass ``skip_plumbing=True``
+        to bypass (tests / dry runs only).
+        """
         self._require_initialized_env()
+        if not skip_plumbing:
+            self._require_current_plumbing()
         raise NotImplementedError("T-3.5 lands in M3.")
 
     def run_qlora_finetune(
@@ -121,4 +164,11 @@ class OnPremLlmSDK:
         raise NotImplementedError("T-6.1 lands in M6.")
 
 
-__all__ = ["EnvironmentNotInitializedError", "InitEnvResult", "OnPremLlmSDK"]
+__all__ = [
+    "EnvironmentNotInitializedError",
+    "InitEnvResult",
+    "OnPremLlmSDK",
+    "PlumbingNotRunError",
+    "PlumbingResult",
+    "PlumbingStageError",
+]
