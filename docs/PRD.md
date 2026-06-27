@@ -33,7 +33,17 @@ The practitioner therefore faces three concrete unknowns:
 ### 1.3a Detected hardware (auto-populated by `init_env.py` — do not hand-edit)
 
 <!-- HARDWARE_SPECS_PLACEHOLDER:START -->
-_The `HardwareScanner` (ADR-015) will replace this paragraph with a Markdown table after `uv run init_env.py` is executed. Until then, this block is intentionally a placeholder. Do not edit the surrounding HTML-comment markers — they are the anchor the scanner uses._
+
+| Component | Value |
+|-----------|-------|
+| Captured at | 2026-06-26T17:19:21Z |
+| OS / Python | Windows-10-10.0.19045-SP0 / 3.12.13 |
+| CPU | Intel64 Family 6 Model 140 Stepping 1, GenuineIntel · 4 physical / 8 logical |
+| RAM | 7.8 GB total · 0.9 GB available |
+| GPU | not detected (CPU-only run) |
+| Disk | 2.8 GB free · unknown · unknown (measured at `C:\AI_Agents_MSC_course\HW5`) |
+
+
 <!-- HARDWARE_SPECS_PLACEHOLDER:END -->
 
 ### 1.3 Target audience

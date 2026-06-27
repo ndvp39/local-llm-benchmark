@@ -1,0 +1,13 @@
+{
+    "version": "1.00",
+    "providers": {
+        "anthropic": {
+            "model": "claude-haiku-4-5-20251001",
+            "in_per_million_usd": 1.00,
+            "out_per_million_usd": 5.00,
+            "captured_at": null,
+            "source_url": null,
+            "note": "Placeholder prices. M4 / T-4.3 MUST replace with Anthropic's current published rates and set captured_at (ISO-8601 date) + source_url."
+        }
+    }
+}

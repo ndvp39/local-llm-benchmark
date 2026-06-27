@@ -1,0 +1,54 @@
+{
+    "version": "1.00",
+    "dict_config": {
+        "version": 1,
+        "disable_existing_loggers": false,
+        "formatters": {
+            "jsonl": {
+                "format": "%(message)s"
+            },
+            "human": {
+                "format": "%(asctime)s %(levelname)-7s %(name)s :: %(message)s",
+                "datefmt": "%Y-%m-%dT%H:%M:%S"
+            }
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "level": "INFO",
+                "formatter": "human",
+                "stream": "ext://sys.stderr"
+            },
+            "lab_log": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "level": "INFO",
+                "formatter": "jsonl",
+                "filename": "results/logs/lab.log",
+                "maxBytes": 10485760,
+                "backupCount": 5,
+                "encoding": "utf-8"
+            }
+        },
+        "loggers": {
+            "on_prem_llm_lab": {
+                "level": "INFO",
+                "handlers": ["console", "lab_log"],
+                "propagate": false
+            },
+            "on_prem_llm_lab.shared.gatekeeper": {
+                "level": "INFO",
+                "handlers": ["console", "lab_log"],
+                "propagate": false
+            },
+            "on_prem_llm_lab.mixins.memory_sampling_mixin": {
+                "level": "WARNING",
+                "handlers": ["console", "lab_log"],
+                "propagate": false
+            }
+        },
+        "root": {
+            "level": "WARNING",
+            "handlers": ["console"]
+        }
+    }
+}

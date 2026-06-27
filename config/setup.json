@@ -1,0 +1,83 @@
+{
+    "version": "1.00",
+    "init": {
+        "max_age_hours": 168,
+        "doc_targets": [
+            "docs/PRD.md",
+            "README.md"
+        ],
+        "placeholder_start": "<!-- HARDWARE_SPECS_PLACEHOLDER:START -->",
+        "placeholder_end": "<!-- HARDWARE_SPECS_PLACEHOLDER:END -->",
+        "keep_bak": true
+    },
+    "hardware_constraints": {
+        "captured_at": "2026-06-26T17:19:21Z",
+        "os": "Windows-10-10.0.19045-SP0",
+        "python": "3.12.13",
+        "cpu": {
+            "model": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+            "cores_physical": 4,
+            "cores_logical": 8
+        },
+        "ram": {
+            "total_gb": 7.804008483886719,
+            "available_gb": 0.918487548828125
+        },
+        "gpu": {
+            "present": false,
+            "model": null,
+            "vram_gb": null
+        },
+        "disk": {
+            "free_gb": 2.8398399353027344,
+            "fs": null,
+            "kind": "unknown",
+            "measured_at": "C:\\AI_Agents_MSC_course\\HW5"
+        }
+    },
+    "hf": {
+        "cache_dir": "~/.cache/huggingface"
+    },
+    "airllm": {
+        "layer_shards_saving_path": "D:/airllm_shards"
+    },
+    "plumbing_test_model": {
+        "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        "quantization": "q2",
+        "label": "tinyllama-q2-plumbing"
+    },
+    "target_models": [
+        {
+            "id": "meta-llama/Meta-Llama-3-8B-Instruct",
+            "quantization": "fp16",
+            "label": "llama3-8b-fp16"
+        },
+        {
+            "id": "Qwen/Qwen2-7B-Instruct",
+            "quantization": "q4",
+            "label": "qwen2-7b-q4"
+        }
+    ],
+    "generation": {
+        "max_new_tokens": 128,
+        "temperature": 0.0,
+        "seed": 42
+    },
+    "sampling": {
+        "memory_hz": 5,
+        "repeat": 5
+    },
+    "energy": {
+        "assumed_watts_idle": 30,
+        "assumed_watts_active": 180,
+        "electricity_price_per_kwh_usd": 0.16
+    },
+    "economic": {
+        "hardware_capex_usd": 2500,
+        "lifetime_hours": 5000,
+        "cloud_gpu": {
+            "hourly_usd": 0.6,
+            "include_in_chart": true
+        }
+    }
+}
