@@ -121,5 +121,53 @@ def run_plumbing_test(
     raise typer.Exit(0)
 
 
+def _resolve_baseline_targets(
+    sdk: OnPremLlmSDK, target_label: str | None
+) -> list[str]:
+    import json as _json  # noqa: PLC0415
+    cfg = _json.loads(sdk.config_path.read_text(encoding="utf-8"))
+    labels = [t["label"] for t in cfg.get("target_models", [])]
+    if target_label is None:
+        return labels
+    if target_label not in labels:
+        raise typer.BadParameter(
+            f"Unknown target_label {target_label!r}; known: {labels}"
+        )
+    return [target_label]
+
+
+@app.command("run-baseline")
+def run_baseline(
+    target_label: Annotated[
+        str | None,
+        typer.Argument(
+            help="Target label from config.target_models; omit to iterate all.",
+        ),
+    ] = None,
+    config: _ConfigOpt = _DEFAULT_CONFIG,
+    repo_root: _RepoRootOpt = None,
+) -> None:
+    """Direct back-end baseline run (T-2.10 / SC-1) — per target."""
+    sdk = OnPremLlmSDK(
+        config_path=config,
+        env=dict(os.environ),
+        repo_root=repo_root or Path.cwd(),
+    )
+    targets = _resolve_baseline_targets(sdk, target_label)
+    failures = 0
+    for label in targets:
+        try:
+            result = sdk.run_baseline(label)
+        except EnvironmentNotInitializedError as exc:
+            typer.echo(f"FAIL: env not initialised -- {exc}")
+            raise typer.Exit(1) from exc
+        except Exception as exc:  # noqa: BLE001 — SC-1 surfacing
+            failures += 1
+            typer.echo(f"FAIL: {label} -- {type(exc).__name__}: {exc}")
+            continue
+        typer.echo(f"OK: {label} -> {result.raw_log_path}")
+    raise typer.Exit(1 if failures else 0)
+
+
 if __name__ == "__main__":
     app()

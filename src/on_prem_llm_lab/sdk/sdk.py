@@ -12,8 +12,10 @@ import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NoReturn
 
+from on_prem_llm_lab.backends.base import BackendRunResult
+from on_prem_llm_lab.sdk._future_stubs import _FutureStubsMixin
+from on_prem_llm_lab.services.baseline_service import run_baseline as _run_baseline
 from on_prem_llm_lab.services.hardware_scanner import HardwareScanner
 from on_prem_llm_lab.services.hardware_scanner_types import HardwareScanResult
 from on_prem_llm_lab.services.plumbing_default_stages import build_default_stages
@@ -42,7 +44,7 @@ class InitEnvResult:
     failures: list[str]
 
 
-class OnPremLlmSDK:
+class OnPremLlmSDK(_FutureStubsMixin):
     """Single entry point for all business logic. See PLAN §3.1 for full surface."""
 
     def __init__(
@@ -118,51 +120,24 @@ class OnPremLlmSDK:
         )
         return runner.run()
 
-    def run_baseline(self, target_label: str, prompt: str, **kwargs: Any) -> NoReturn:
-        """Direct back-end run on an oversized target. Implementation: T-2.10 (M2b)."""
-        self._require_initialized_env()
-        raise NotImplementedError("T-2.10 lands in M2b.")
-
-    def run_airllm(self, target_label: str, prompt: str, **kwargs: Any) -> NoReturn:
-        """AirLLM back-end run. Implementation: T-3.1 (M3)."""
-        self._require_initialized_env()
-        raise NotImplementedError("T-3.1 lands in M3.")
-
-    def run_sweep(
+    def run_baseline(
         self,
-        prompts: list[str],
+        target_label: str,
         *,
-        skip_plumbing: bool = False,
-        **kwargs: Any,
-    ) -> NoReturn:
-        """target × quant × backend sweep. Implementation: T-3.5 (M3).
-
-        Precondition (T-2a.4 · ADR-010): refuses to start unless a successful
-        plumbing manifest exists under ``results/``. Pass ``skip_plumbing=True``
-        to bypass (tests / dry runs only).
-        """
+        prompt: str | None = None,
+        max_new_tokens: int | None = None,
+    ) -> BackendRunResult:
+        """Direct back-end baseline run on one oversized target (T-2.10 / SC-1)."""
         self._require_initialized_env()
-        if not skip_plumbing:
-            self._require_current_plumbing()
-        raise NotImplementedError("T-3.5 lands in M3.")
-
-    def run_qlora_finetune(
-        self, target_label: str, dataset_path: Path, lora_config: Any
-    ) -> NoReturn:
-        """QLoRA fine-tune (ADR-014). Implementation: T-5.2 (M5, blocked on T-5.0)."""
-        self._require_initialized_env()
-        raise NotImplementedError("T-5.2 lands in M5 (after T-5.0 PRD_qlora.md).")
-
-    def economic_analysis(self, sweep: Any) -> NoReturn:
-        """3-curve break-even (ADR-012). Implementation: T-4.1 (M4)."""
-        self._require_initialized_env()
-        raise NotImplementedError("T-4.1 lands in M4.")
-
-    def assemble_readme(self, *, dry_run: bool = False) -> NoReturn:
-        """Auto-assemble README from results/ (ADR-007). Implementation: T-6.1 (M6)."""
-        self._require_initialized_env()
-        raise NotImplementedError("T-6.1 lands in M6.")
-
+        cfg = json.loads(self.config_path.read_text(encoding="utf-8"))
+        return _run_baseline(
+            target_label=target_label,
+            config=cfg,
+            results_dir=self.repo_root / "results",
+            prompt=prompt,
+            max_new_tokens=max_new_tokens,
+            repo_root=self.repo_root,
+        )
 
 __all__ = [
     "EnvironmentNotInitializedError",
