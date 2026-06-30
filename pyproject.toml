@@ -30,10 +30,12 @@ classifiers = [
 # pins live here (single source of truth — pyproject.toml).
 dependencies = [
     # Core inference / model handling
-    # Upper bound <4.49 — required by `optimum.bettertransformer` (which AirLLM
-    # imports). Without it uv resolves to transformers 5.x and bettertransformer
-    # refuses to import.
-    "transformers>=4.44,<4.49",
+    # Upper bound <4.46 — transformers 4.46 refactored LlamaAttention's forward
+    # return shape (past-key-values moved to a Cache object). AirLLM 2.11's
+    # `layer_outputs[2]` unpacks the old tuple shape; on >=4.46 it crashes with
+    # "cannot unpack non-iterable NoneType object" mid-generate. Verified on
+    # transformers 4.48.3 — see prompts_book §10.
+    "transformers>=4.44,<4.46",
     "accelerate>=0.33",
     "torch>=2.2",
     "safetensors>=0.4.3",
@@ -42,7 +44,8 @@ dependencies = [
     # Pin <2.0 — AirLLM imports `optimum.bettertransformer`, which was removed
     # in optimum 2.0. Last release that still ships it is 1.24.x.
     "optimum>=1.21,<2.0",
-    # Required by SentencePiece-tokenized models (e.g. TinyLlama, Llama-3).
+    # Required by SentencePiece-tokenized models and transformers' tokenizer
+    # initializer probes; safer to pin explicitly than rely on transitive pulls.
     "sentencepiece>=0.2",
     "protobuf>=4.25",
     # Anthropic — sole runtime API provider (ADR-011)

@@ -17,8 +17,9 @@ from on_prem_llm_lab.services.plumbing_test_runner import (
 
 _MODEL = {
     "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    "quantization": "q2",
-    "label": "tiny-q2-plumbing",
+    "quantization": "fp16",
+    "label": "tinyllama-1b-fp16-plumbing",
+    "loader": "transformers",
 }
 
 

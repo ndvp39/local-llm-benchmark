@@ -24,8 +24,9 @@ from on_prem_llm_lab.sdk import OnPremLlmSDK
 
 _PLUMBING_MODEL = {
     "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    "quantization": "q2",
-    "label": "tiny-q2",
+    "quantization": "q4",
+    "label": "tinyllama-1b-q4-plumbing",
+    "loader": "airllm",
 }
 
 

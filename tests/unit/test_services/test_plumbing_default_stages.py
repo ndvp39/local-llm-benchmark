@@ -18,8 +18,9 @@ from on_prem_llm_lab.services.plumbing_default_stages import build_default_stage
 _MIN_CFG = {
     "plumbing_test_model": {
         "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-        "quantization": "q2",
-        "label": "tiny-q2",
+        "quantization": "fp16",
+        "label": "tinyllama-1b-fp16-plumbing",
+        "loader": "transformers",
     },
     "airllm": {"layer_shards_saving_path": "D:/airllm_shards"},
     "generation": {"plumbing_max_new_tokens": 8},

@@ -30,8 +30,9 @@ def _make_initialized_setup(tmp_path: Path) -> Path:
             },
             "plumbing_test_model": {
                 "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-                "quantization": "q2",
-                "label": "tiny-q2",
+                "quantization": "fp16",
+                "label": "tinyllama-1b-fp16-plumbing",
+                "loader": "airllm",
             },
             "airllm": {"layer_shards_saving_path": str(tmp_path / "shards")},
         }),

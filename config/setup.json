@@ -42,26 +42,30 @@
         "layer_shards_saving_path": "D:/AI_agents_course/airllm_shards"
     },
     "plumbing_test_model": {
-        "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-        "quantization": "q2",
-        "label": "tinyllama-q2-plumbing"
+        "id": "meta-llama/Meta-Llama-3-8B-Instruct",
+        "quantization": "fp16",
+        "label": "llama3-8b-fp16-airllm-plumbing",
+        "loader": "airllm"
     },
     "target_models": [
         {
             "id": "meta-llama/Meta-Llama-3-8B-Instruct",
             "quantization": "fp16",
-            "label": "llama3-8b-fp16"
+            "label": "llama3-8b-fp16",
+            "loader": "airllm"
         },
         {
             "id": "Qwen/Qwen2-7B-Instruct",
             "quantization": "q4",
-            "label": "qwen2-7b-q4"
+            "label": "qwen2-7b-q4",
+            "loader": "airllm"
         }
     ],
     "generation": {
         "max_new_tokens": 128,
         "temperature": 0.0,
-        "seed": 42
+        "seed": 42,
+        "plumbing_max_new_tokens": 2
     },
     "sampling": {
         "memory_hz": 5,
