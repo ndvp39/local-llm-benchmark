@@ -394,21 +394,29 @@ InferenceBackend (ABC, declares load/generate/unload + Building-Block contract)
 }
 ```
 
-### 6.3 `PlumbingResult` (new in v1.10)
+### 6.3 `PlumbingResult` (new in v1.10; shape updated in v1.50 per prompts_book §10)
 ```jsonc
 {
-  "captured_at": "...",
-  "plumbing_test_model": { "id": "...", "quantization": "q2" },
-  "stages": {
-    "download":          { "status": "ok|fail", "duration_s": 12.4 },
-    "mmap_allocation":   { "status": "ok|fail", "duration_s": 0.8  },
-    "metric_collection": { "status": "ok|fail", "ttft_ms": 1200, "tpot_ms": 95 },
-    "manifest_write":    { "status": "ok|fail", "path": "results/plumbing_<id>.json" }
+  "captured_at": "2026-06-30T19:41:54Z",
+  "plumbing_test_model": {
+    "id": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "quantization": "fp16",
+    "label": "llama3-8b-fp16-airllm-plumbing",
+    "loader": "airllm"
   },
-  "overall": "ok|fail",
-  "remediation_hint": "..."
+  "stages": {
+    "download":          { "status": "ok", "duration_s": 0.97, "path": "..." },
+    "mmap_allocation":   { "status": "ok", "duration_s": 9.53, "layers": 35, "loader": "airllm" },
+    "metric_collection": { "status": "ok", "duration_s": 1103.99,
+                            "ttft_ms": 367282.43, "tpot_ms": 368350.11,
+                            "peak_ram_mb": 1286.99, "tokens_generated": 2 },
+    "manifest_write":    { "status": "ok", "path": "results/plumbing_<id>.json" }
+  },
+  "overall": "ok",
+  "remediation_hint": null
 }
 ```
+> Shape carries `loader` per stage where relevant; under M2a's "plumbing = first target at 2 tokens" final shape, `mmap_allocation.layers` reflects the production model's actual transformer-block count (Llama-3-8B = 35).
 
 ### 6.4 `rate_limits.json` — see §4.3 above.
 
@@ -436,15 +444,20 @@ InferenceBackend (ABC, declares load/generate/unload + Building-Block contract)
     "layer_shards_saving_path": "D:/airllm_shards"
   },
   "plumbing_test_model": {
-    "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    "quantization": "q2",
-    "label": "tinyllama-q2-plumbing"
+    "id": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "quantization": "fp16",
+    "label": "llama3-8b-fp16-airllm-plumbing",
+    "loader": "airllm"
   },
   "target_models": [
-    { "id": "meta-llama/Meta-Llama-3-8B-Instruct", "quantization": "fp16", "label": "llama3-8b-fp16" },
-    { "id": "Qwen/Qwen2-7B-Instruct",              "quantization": "q4",   "label": "qwen2-7b-q4"  }
+    { "id": "meta-llama/Meta-Llama-3-8B-Instruct", "quantization": "fp16", "label": "llama3-8b-fp16", "loader": "airllm" },
+    { "id": "Qwen/Qwen2-7B-Instruct",              "quantization": "q4",   "label": "qwen2-7b-q4",   "loader": "airllm" }
   ],
-  "generation": { "max_new_tokens": 128, "temperature": 0.0, "seed": 42 },
+  // `plumbing_test_model` mirrors `target_models[0]` byte-for-byte in v1.50+
+  // (prompts_book §10): plumbing runs the production AirLLM loader on the
+  // production model at a 2-token budget (`plumbing_max_new_tokens` below).
+  "generation": { "max_new_tokens": 128, "temperature": 0.0, "seed": 42,
+                  "plumbing_max_new_tokens": 2 },
   "sampling":   { "memory_hz": 5, "repeat": 5 },
   "energy":     { "assumed_watts_idle": 30, "assumed_watts_active": 180,
                   "electricity_price_per_kwh_usd": 0.16 },

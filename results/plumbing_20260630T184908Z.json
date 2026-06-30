@@ -1,0 +1,36 @@
+{
+  "captured_at": "2026-06-30T18:49:08Z",
+  "plumbing_test_model": {
+    "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    "quantization": "fp16",
+    "label": "tinyllama-1b-fp16-plumbing",
+    "loader": "transformers"
+  },
+  "stages": {
+    "download": {
+      "status": "ok",
+      "duration_s": 47.3975,
+      "path": "D:/AI_agents_course/hf_cache\\hub\\models--TinyLlama--TinyLlama-1.1B-Chat-v1.0\\snapshots\\fe8a4ea1ffedaf415f4da2f062534de366a451e6"
+    },
+    "mmap_allocation": {
+      "status": "ok",
+      "duration_s": 61.7485,
+      "layers": 22,
+      "loader": "transformers"
+    },
+    "metric_collection": {
+      "status": "ok",
+      "duration_s": 5.8132,
+      "ttft_ms": 1929.27,
+      "tpot_ms": 120.76,
+      "peak_ram_mb": 2290.5,
+      "tokens_generated": 32
+    },
+    "manifest_write": {
+      "status": "ok",
+      "path": "C:\\ai_agents_msc_course\\hw5\\results\\plumbing_20260630T184908Z.json"
+    }
+  },
+  "overall": "ok",
+  "remediation_hint": null
+}
