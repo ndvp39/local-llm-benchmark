@@ -30,12 +30,21 @@ classifiers = [
 # pins live here (single source of truth — pyproject.toml).
 dependencies = [
     # Core inference / model handling
-    "transformers>=4.44",
+    # Upper bound <4.49 — required by `optimum.bettertransformer` (which AirLLM
+    # imports). Without it uv resolves to transformers 5.x and bettertransformer
+    # refuses to import.
+    "transformers>=4.44,<4.49",
     "accelerate>=0.33",
     "torch>=2.2",
     "safetensors>=0.4.3",
     "huggingface_hub>=0.24",
     "airllm>=2.11",
+    # Pin <2.0 — AirLLM imports `optimum.bettertransformer`, which was removed
+    # in optimum 2.0. Last release that still ships it is 1.24.x.
+    "optimum>=1.21,<2.0",
+    # Required by SentencePiece-tokenized models (e.g. TinyLlama, Llama-3).
+    "sentencepiece>=0.2",
+    "protobuf>=4.25",
     # Anthropic — sole runtime API provider (ADR-011)
     "anthropic>=0.34",
     # QLoRA extension (ADR-014)

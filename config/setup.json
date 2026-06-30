@@ -11,7 +11,7 @@
         "keep_bak": true
     },
     "hardware_constraints": {
-        "captured_at": "2026-06-26T17:19:21Z",
+        "captured_at": "2026-06-30T17:22:50Z",
         "os": "Windows-10-10.0.19045-SP0",
         "python": "3.12.13",
         "cpu": {
@@ -21,7 +21,7 @@
         },
         "ram": {
             "total_gb": 7.804008483886719,
-            "available_gb": 0.918487548828125
+            "available_gb": 2.9108810424804688
         },
         "gpu": {
             "present": false,
@@ -29,17 +29,17 @@
             "vram_gb": null
         },
         "disk": {
-            "free_gb": 2.8398399353027344,
+            "free_gb": 392.8479461669922,
             "fs": null,
             "kind": "unknown",
-            "measured_at": "C:\\AI_Agents_MSC_course\\HW5"
+            "measured_at": "D:\\AI_agents_course\\airllm_shards"
         }
     },
     "hf": {
-        "cache_dir": "~/.cache/huggingface"
+        "cache_dir": "D:/AI_agents_course/hf_cache"
     },
     "airllm": {
-        "layer_shards_saving_path": "D:/airllm_shards"
+        "layer_shards_saving_path": "D:/AI_agents_course/airllm_shards"
     },
     "plumbing_test_model": {
         "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",

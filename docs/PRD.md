@@ -36,12 +36,12 @@ The practitioner therefore faces three concrete unknowns:
 
 | Component | Value |
 |-----------|-------|
-| Captured at | 2026-06-26T17:19:21Z |
+| Captured at | 2026-06-30T17:22:50Z |
 | OS / Python | Windows-10-10.0.19045-SP0 / 3.12.13 |
 | CPU | Intel64 Family 6 Model 140 Stepping 1, GenuineIntel · 4 physical / 8 logical |
-| RAM | 7.8 GB total · 0.9 GB available |
+| RAM | 7.8 GB total · 2.9 GB available |
 | GPU | not detected (CPU-only run) |
-| Disk | 2.8 GB free · unknown · unknown (measured at `C:\AI_Agents_MSC_course\HW5`) |
+| Disk | 392.8 GB free · unknown · unknown (measured at `D:\AI_agents_course\airllm_shards`) |
 
 
 <!-- HARDWARE_SPECS_PLACEHOLDER:END -->

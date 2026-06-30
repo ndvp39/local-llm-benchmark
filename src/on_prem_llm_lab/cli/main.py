@@ -13,12 +13,18 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from dotenv import load_dotenv
 
 from on_prem_llm_lab import (
     EnvironmentNotInitializedError,
     OnPremLlmSDK,
     PlumbingStageError,
 )
+
+# Load .env at CLI startup so HF_TOKEN / ANTHROPIC_API_KEY flow into os.environ
+# without the user having to `set VAR=...` per shell. Secrets stay in the
+# gitignored .env (constitution §6.4). Tests don't import this module.
+load_dotenv()
 
 app = typer.Typer(
     help="On-Premises LLM benchmark lab CLI.",
