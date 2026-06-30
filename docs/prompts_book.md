@@ -6,6 +6,8 @@
 - [1. Planning prompts (PRD / PLAN / TODO authoring)](#1-planning-prompts-prd--plan--todo-authoring)
 - [2. Installation & environment issues (T-1.2)](#2-installation--environment-issues-t-12)
 - [3. Provider pricing capture (M4)](#3-provider-pricing-capture-m4)
+- [4. T-1.3 — Forbidden-tools check: scope decision](#4-t-13--forbidden-tools-check-scope-decision)
+- [5. T-2a.5 prep — storage drive + AirLLM compatibility](#5-t-2a5-prep--storage-drive--airllm-compatibility)
 
 ---
 
@@ -106,3 +108,84 @@ For exceptional cases in code (e.g., a docstring that absolutely must show a `pi
 
 ### 4.6 If the user wants strict literal enforcement
 The alternative is to add `<!-- ALLOW-FORBIDDEN: discussion -->` markers to every constitution-discussion line in PRD / PLAN / TODO / prompts_book.md (≈18 lines). Quick to do but visually noisy in tables. Pivot to that interpretation on user request.
+
+---
+
+## 5. T-2a.5 prep — storage drive + AirLLM compatibility
+
+> Captured 2026-06-30 during preparation for the real-machine plumbing test run. Two distinct problems surfaced before any model could be downloaded; both fixes were committed together in `1f76064`.
+
+### 5.1 Symptom — disk on C: too small for even one target model
+
+First scan run on 2026-06-26 reported:
+
+| Component | Value |
+|-----------|-------|
+| Disk free | **2.8 GB** at `C:\AI_Agents_MSC_course\HW5` |
+| RAM total / available | 7.8 GB / 0.9 GB |
+
+The plumbing-test model alone (`TinyLlama-1.1B-Chat-v1.0`) is ~2 GB in safetensors form; the two real target models (Llama-3-8B fp16, Qwen2-7B) would each need ~14–16 GB of HF cache **plus** an equivalent footprint of AirLLM per-layer shards. C: was non-starter.
+
+### 5.2 Root cause #1 — HF cache + AirLLM shard path both defaulted to small drives
+
+* `huggingface_hub` writes to `~/.cache/huggingface` by default — on this user that resolves to `C:\Users\ndvp3\.cache\huggingface`. There was no env-var or config field guiding it elsewhere.
+* `airllm.layer_shards_saving_path` had been set in `config/setup.json` v1.00 to a placeholder (`D:/airllm_shards`) — but the disk-free measurement in `HardwareScanner` reads the *same* path, so on a machine without a `D:` drive it reported the C: free instead and the placeholder went un-noticed. ADR-005 already says shards live on a dedicated drive; we just hadn't validated the path against a real machine yet.
+
+### 5.3 Fix #1 — D: drive added; config points everything there
+
+The student attached a 1 TB external drive (NADAV D:) with 392 GB free. We:
+
+1. Created `D:/AI_agents_course/airllm_shards` (per-layer shard output) and `D:/AI_agents_course/hf_cache` (HF download cache).
+2. Updated `config/setup.json`:
+   * `hf.cache_dir` → `D:/AI_agents_course/hf_cache`
+   * `airllm.layer_shards_saving_path` → `D:/AI_agents_course/airllm_shards`
+3. Added `HF_HOME=` to `.env-example` as an OPTIONAL template line (with usage notes — see § "HF cache redirect" in the README). The user's own `.env` got the concrete value `HF_HOME=D:/AI_agents_course/hf_cache`.
+4. Re-ran `uv run init_env.py`. `HardwareScanner` now reports:
+
+   | Component | Value |
+   |-----------|-------|
+   | Disk free | **392.8 GB** at `D:\AI_agents_course\airllm_shards` |
+   | RAM available | 2.9 GB |
+
+   ` config/setup.json.hardware_constraints` + the `<!-- HARDWARE_SPECS_PLACEHOLDER -->` blocks in `README.md` and `docs/PRD.md` were all auto-patched in the same scan.
+
+### 5.4 Why `HF_HOME` (env var) and not just `config.hf.cache_dir`
+
+`huggingface_hub` reads `HF_HOME` directly — no `cache_dir=` argument is passed from our code today (no `services/model_acquirer.py` consumer exists yet; that's M2b+). Until then, the env var is the only mechanism that actually moves the cache. The config field is set anyway, so when `model_acquirer.py` lands it can read from one canonical place and pass it through.
+
+### 5.5 Symptom #2 — AirLLM refused to import
+
+Once disk was no longer the bottleneck, an early `uv run` hit a different wall: AirLLM imports `optimum.bettertransformer.BetterTransformer`, which was **removed in optimum 2.0** (released 2025). Fresh installs of optimum landed on 2.x by default, and AirLLM crashed at module load before any model touched it.
+
+A second flavour of the same problem: `transformers>=4.49` ships breaking changes that AirLLM's `BetterTransformer` fallback path can't handle — calls into `transformers.models.llama.modeling_llama` no longer resolve the way AirLLM 2.11 expects.
+
+### 5.6 Fix #2 — pin transformers and optimum below the breaking releases
+
+`pyproject.toml` got tighter caps + two new tokenizer deps:
+
+```toml
+"transformers>=4.44,<4.49",
+"optimum>=1.21,<2.0",
+"sentencepiece>=0.2",
+"protobuf>=4.25",
+```
+
+`sentencepiece` + `protobuf` are required by Llama-3 / TinyLlama / Qwen tokenizers (SentencePiece-tokenized models). They're listed transitively by `transformers` but installing them explicitly stops uv from yanking them when transformers upgrades.
+
+`uv lock` re-resolved 112 → 113 packages; `uv sync --frozen` succeeded; `uv run python -c "import airllm"` walked cleanly.
+
+### 5.7 What was tried and rolled back
+
+Early in this troubleshooting we also patched `services/plumbing_default_stages.py` with two workarounds:
+
+* Add `ignore_patterns=["original/*", "*.pth", "*.bin"]` to the HF `snapshot_download` call, to skip the duplicate Meta PyTorch checkpoints that Llama-3 ships under `original/` (~6 GB extra on disk).
+* Monkeypatch `huggingface_hub.snapshot_download` and `BetterTransformer.transform` during the `mmap_allocation` stage, to inject the same `ignore_patterns` into AirLLM's *internal* downloader and to convert `NotImplementedError` → `ValueError` so AirLLM's fallback chain would engage on unsupported model types.
+
+**Both were reverted before the T-2a.5 prep commit.** Once disk moved to D: with 390 GB free, the ~6 GB Meta-original overhead is irrelevant; once optimum was pinned below 2.0, the BetterTransformer path works without converting exceptions. The simpler `services/plumbing_default_stages.py` (no `ignore_patterns`, no monkeypatches) is what shipped. Keeping the workarounds would have masked the real root causes and left scary monkeypatch code in a Building Block.
+
+### 5.8 Lessons
+
+1. **Validate model-storage drive against `HardwareScanner` output BEFORE first model run.** A placeholder shard path that doesn't exist silently falls back to measuring whatever default drive Windows hands `psutil.disk_usage`. Make the scanner's `measured_at` field part of the eyeball check.
+2. **AirLLM ↔ transformers ↔ optimum has tight version coupling.** AirLLM 2.11 expects pre-2.0 optimum (for `bettertransformer`) and pre-4.49 transformers. Pinning these explicitly in `pyproject.toml` is mandatory; do not assume `>=` is safe for ML-stack deps.
+3. **Prefer environment / config changes over runtime monkeypatches.** Two early "fixes" patched library internals at runtime; both went away once the right env var (`HF_HOME`) and the right dependency pins were in place. Workarounds compound; root-cause fixes don't.
+4. **`.env-example` is a template, not a snapshot.** The first version of `HF_HOME=` hard-coded the student's own `D:/AI_agents_course/hf_cache`; on review we made it an empty placeholder with usage notes so a fresh checkout on a different machine wouldn't break.
