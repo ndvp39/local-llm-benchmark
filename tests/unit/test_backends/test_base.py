@@ -21,9 +21,12 @@ from on_prem_llm_lab.shared.automodel_factory import SUPPORTED_QUANTIZATIONS
 
 
 class TestQuant:
-    def test_quant_matches_automodel_factory_supported(self) -> None:
-        """Quant labels MUST agree with the factory's allow-list."""
-        assert {q.value for q in Quant} == set(SUPPORTED_QUANTIZATIONS)
+    def test_factory_supported_is_subset_of_quant_enum(self) -> None:
+        """DP-3 — the Direct factory supports a SUBSET of the Quant enum
+        (only fp32 + fp16 after the DP-3 shrinkage). Q4/Q8 are handled by
+        AirLLM; Q2/NF4 are placeholder labels per FR-Q-5."""
+        assert set(SUPPORTED_QUANTIZATIONS) <= {q.value for q in Quant}
+        assert set(SUPPORTED_QUANTIZATIONS) == {"fp32", "fp16"}
 
     def test_quant_is_string_subclass(self) -> None:
         """str-inheritance makes ``json.dumps(Quant.FP16) == '"fp16"'``."""

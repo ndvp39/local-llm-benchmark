@@ -53,6 +53,14 @@ def test_unsupported_quantization_raises() -> None:
         amf.load_causal_lm("any/model", quantization="int3")
 
 
+@pytest.mark.parametrize("q", ["q8", "q4", "q2", "nf4"])
+def test_dp3_q_labels_no_longer_silently_coerce_to_fp16(q: str) -> None:
+    """DP-3 D-Q-1 — the factory now REJECTS q*/nf4 labels instead of silently
+    coercing them to fp16 (the sweep-poisoning bug this PRD fixed)."""
+    with pytest.raises(amf.UnsupportedQuantizationError):
+        amf.load_causal_lm("any/model", quantization=q)
+
+
 def test_happy_path_uses_automodel_factories(
     patched_hf: dict[str, list[tuple[str, dict]]],
 ) -> None:
@@ -85,21 +93,15 @@ def test_happy_path_uses_automodel_factories(
 
 @pytest.mark.parametrize(
     ("quant", "expected_dtype"),
-    [
-        ("fp32", torch.float32),
-        ("fp16", torch.float16),
-        ("q8", torch.float16),
-        ("q4", torch.float16),
-        ("q2", torch.float16),
-        ("nf4", torch.float16),
-    ],
+    [("fp32", torch.float32), ("fp16", torch.float16)],
 )
-def test_dtype_resolution_per_quantization(
+def test_dtype_resolution_per_supported_quantization(
     patched_hf: dict[str, list[tuple[str, dict]]],
     quant: str,
     expected_dtype: torch.dtype,
 ) -> None:
-    """FR-7 — every supported label MUST map to the documented torch dtype."""
+    """FR-7 / DP-3 — the two levels the Direct factory actually supports map
+    to the documented torch dtype. q*/nf4 are covered by the raises-test above."""
     amf.load_causal_lm("ndvp/tiny-test", quantization=quant)
     _, model_kwargs = patched_hf["model"][-1]
     assert model_kwargs["torch_dtype"] is expected_dtype

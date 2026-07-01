@@ -19,20 +19,28 @@ from typing import Any
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-SUPPORTED_QUANTIZATIONS: tuple[str, ...] = ("fp32", "fp16", "q8", "q4", "q2", "nf4")
+SUPPORTED_QUANTIZATIONS: tuple[str, ...] = ("fp32", "fp16")
 
 _DTYPE_BY_QUANT: dict[str, torch.dtype] = {
     "fp32": torch.float32,
     "fp16": torch.float16,
-    "q8": torch.float16,
-    "q4": torch.float16,
-    "q2": torch.float16,
-    "nf4": torch.float16,
+}
+
+# DP-3 support matrix (FR-Q-2). String keys avoid a shared/ -> backends/
+# reverse import; helpers duck-type BackendId + Quant via their .value.
+_SUPPORTED_MATRIX: dict[str, frozenset[str]] = {
+    "direct": frozenset({"fp32", "fp16"}),
+    "airllm": frozenset({"fp16", "q4", "q8"}),
+    "api": frozenset({"fp16"}),
 }
 
 
 class UnsupportedQuantizationError(ValueError):
-    """Raised when a quantization label is not in :data:`SUPPORTED_QUANTIZATIONS`."""
+    """Raised when a quantization label is not supported by the target path.
+
+    Used by ``load_causal_lm`` (factory shape) AND by ``require_supported``
+    (per-backend policy per DP-3 FR-Q-3 / FR-Q-4).
+    """
 
 
 @dataclass(frozen=True)
@@ -91,9 +99,42 @@ def load_causal_lm(
     )
 
 
+def _as_label(x: Any) -> str:
+    """Duck-typed ``.value`` extraction — accepts BackendId / Quant or ``str``."""
+    return x.value if hasattr(x, "value") else str(x)
+
+
+def is_supported(backend: Any, quantization: Any) -> bool:
+    """True if ``(backend, quantization)`` is exercisable (DP-3 FR-Q-1)."""
+    b = _as_label(backend)
+    q = _as_label(quantization)
+    return q in _SUPPORTED_MATRIX.get(b, frozenset())
+
+
+def supported_matrix() -> dict[str, frozenset[str]]:
+    """Canonical policy matrix (DP-3 FR-Q-2). Returns a shallow copy."""
+    return dict(_SUPPORTED_MATRIX)
+
+
+def require_supported(backend: Any, quantization: Any) -> None:
+    """Raise :class:`UnsupportedQuantizationError` if the combo is unsupported."""
+    if is_supported(backend, quantization):
+        return
+    b = _as_label(backend)
+    q = _as_label(quantization)
+    allowed = _SUPPORTED_MATRIX.get(b, frozenset())
+    raise UnsupportedQuantizationError(
+        f"{b!r} does not support quantization {q!r}; "
+        f"supported for this backend: {sorted(allowed)}"
+    )
+
+
 __all__ = [
-    "SUPPORTED_QUANTIZATIONS",
     "LoadedModel",
+    "SUPPORTED_QUANTIZATIONS",
     "UnsupportedQuantizationError",
+    "is_supported",
     "load_causal_lm",
+    "require_supported",
+    "supported_matrix",
 ]

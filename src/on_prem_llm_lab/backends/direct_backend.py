@@ -28,7 +28,11 @@ from on_prem_llm_lab.backends.base import (
     InferenceBackend,
     Quant,
 )
-from on_prem_llm_lab.shared.automodel_factory import LoadedModel, load_causal_lm
+from on_prem_llm_lab.shared.automodel_factory import (
+    LoadedModel,
+    load_causal_lm,
+    require_supported,
+)
 
 _HEADROOM_RATIO = 0.9  # if weights exceed 90 % of avail RAM, don't even try
 
@@ -75,6 +79,7 @@ class DirectBackend(InferenceBackend):
         """
         if self._loaded is not None:
             return
+        require_supported(self.BACKEND_ID, self._quantization)
         if not self._skip_preflight:
             self._preflight_ram_check()
         self._loaded = self._factory(
