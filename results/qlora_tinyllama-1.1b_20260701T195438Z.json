@@ -1,0 +1,53 @@
+{
+  "run_id": "20260701T195438Z",
+  "started_at": "20260701T195438Z",
+  "venue": "colab_t4_16gb",
+  "base_model_label": "tinyllama-1.1b",
+  "base_model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "dataset_hf_id": "yahma/alpaca-cleaned",
+  "dataset_subset_size": 500,
+  "lora": {
+    "rank": 8,
+    "alpha": 16,
+    "dropout": 0.05,
+    "target_modules": [
+      "q_proj",
+      "v_proj"
+    ]
+  },
+  "training": {
+    "epochs": 1,
+    "max_steps": 200,
+    "batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "learning_rate": 0.0002,
+    "warmup_steps": 20,
+    "gradient_checkpointing": true,
+    "paged_optimizer": true
+  },
+  "measurement": {
+    "eval_prompt": "Explain quantum entanglement in one paragraph.",
+    "max_new_tokens": 128
+  },
+  "trainable_params": 1126400,
+  "total_params": 616732672,
+  "trainable_pct": 0.1826399104732366,
+  "nf4_load_vram_mb": 802.043904,
+  "train_vram_peak_mb": 1060.567552,
+  "inference_vram_peak_mb_before": 820.711424,
+  "inference_vram_peak_mb_after": 831.825408,
+  "vram_ratio": 1.2922539165240132,
+  "final_train_loss": 1.0241414308547974,
+  "total_steps": 200,
+  "wall_s_train": 625.2500553259997,
+  "wall_s_inference_before": 1.80365042800031,
+  "wall_s_inference_after": 9.466141034999964,
+  "output_before": "Explain quantum entanglement in one paragraph.",
+  "output_after": "Explain quantum entanglement in one paragraph.\nExplain quantum entanglement in one paragraph.\nQuantum entanglement is a phenomenon where two particles are in a state of entanglement with each other, even if they are separated by a large distance. This means that the state of one particle can be affected by the state of the other particle, even if they are not directly connected. This phenomenon was first observed in 1935 by Einstein, Podolsky, and Rosen, and has since been studied extensively.\nOne of the most important applications of quantum entanglement is in quantum information processing. Entangled particles can be",
+  "adapter_zip": "/content/qlora_adapter_tinyllama-1.1b_20260701T195438Z.zip",
+  "loss_curve_csv": "/content/qlora_loss_20260701T195438Z.csv",
+  "loss_plot_png": "/content/qlora_loss.png",
+  "cuda_device": "Tesla T4",
+  "cuda_total_vram_gb": 15.637086208,
+  "seed": 42
+}
