@@ -26,6 +26,7 @@ from on_prem_llm_lab.services.plumbing_test_runner import (
     PlumbingTestRunner,
     StageCallable,
 )
+from on_prem_llm_lab.services.sweep_service import run_sweep as _run_sweep
 from on_prem_llm_lab.shared.env_guard import (
     EnvironmentNotInitializedError,
     require_initialized_env,
@@ -97,27 +98,18 @@ class OnPremLlmSDK(_FutureStubsMixin):
         return require_current_plumbing(self.repo_root / "results")
 
     def run_plumbing_test(
-        self,
-        *,
-        stages: Mapping[str, StageCallable] | None = None,
+        self, *, stages: Mapping[str, StageCallable] | None = None,
     ) -> PlumbingResult:
-        """ADR-010 pre-flight on the small/Q2 model (T-2a.2).
-
-        ``stages`` is an injection seam for tests; production callers leave it
-        ``None`` so :func:`build_default_stages` wires real HF + AirLLM + psutil
-        closures from config. The runner writes ``results/plumbing_<ts>.json``
-        and raises :class:`PlumbingStageError` on any stage failure.
-        """
+        """ADR-010 pre-flight on the small/Q2 model (T-2a.2)."""
         self._require_initialized_env()
         cfg = json.loads(self.config_path.read_text(encoding="utf-8"))
         results_dir = self.repo_root / "results"
         built_stages = stages or build_default_stages(
-            cfg, results_dir, hf_token=self.env.get("HF_TOKEN")
+            cfg, results_dir, hf_token=self.env.get("HF_TOKEN"),
         )
         runner = PlumbingTestRunner(
             plumbing_test_model=cfg["plumbing_test_model"],
-            stages=built_stages,
-            results_dir=results_dir,
+            stages=built_stages, results_dir=results_dir,
         )
         return runner.run()
 
@@ -136,25 +128,34 @@ class OnPremLlmSDK(_FutureStubsMixin):
             repo_root=self.repo_root,
         )
 
+    def run_sweep(
+        self, backends: list[str] | None = None, *,
+        skip_plumbing: bool = False,
+    ) -> Path:
+        """Iterate target × quantization × backend (T-3.5)."""
+        self._require_initialized_env()
+        if not skip_plumbing:
+            self._require_current_plumbing()
+        return _run_sweep(
+            config=json.loads(self.config_path.read_text(encoding="utf-8")),
+            results_dir=self.repo_root / "results",
+            backends=backends or ["airllm"],
+            repo_root=self.repo_root, hf_token=self.env.get("HF_TOKEN"),
+        )
+
     def run_baseline(
-        self,
-        target_label: str,
-        *,
-        prompt: str | None = None,
-        max_new_tokens: int | None = None,
+        self, target_label: str, *,
+        prompt: str | None = None, max_new_tokens: int | None = None,
         skip_preflight: bool = False,
     ) -> BackendRunResult:
-        """Direct back-end baseline run on one oversized target (T-2.10 / SC-1)."""
+        """Direct baseline run on one oversized target (T-2.10 / SC-1)."""
         self._require_initialized_env()
-        cfg = json.loads(self.config_path.read_text(encoding="utf-8"))
         return _run_baseline(
             target_label=target_label,
-            config=cfg,
+            config=json.loads(self.config_path.read_text(encoding="utf-8")),
             results_dir=self.repo_root / "results",
-            prompt=prompt,
-            max_new_tokens=max_new_tokens,
-            repo_root=self.repo_root,
-            skip_preflight=skip_preflight,
+            prompt=prompt, max_new_tokens=max_new_tokens,
+            repo_root=self.repo_root, skip_preflight=skip_preflight,
         )
 
 __all__ = [

@@ -93,20 +93,31 @@ def _stub_externals(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("psutil.Process", _FakeProcess)
 
 
+_SENTINEL_CSV = Path("sentinel_sweep.csv")
+
+
+def _stub_sweep_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Short-circuit the sweep service so the guard-precondition test stays fast."""
+    monkeypatch.setattr(
+        "on_prem_llm_lab.sdk.sdk._run_sweep",
+        lambda **kwargs: _SENTINEL_CSV,
+    )
+
+
 @pytest.mark.integration
 def test_run_sweep_without_plumbing_manifest_raises_end_to_end(tmp_path: Path) -> None:
     """DoD: SDK.run_sweep MUST raise PlumbingNotRunError when no manifest exists."""
     setup = _make_setup(tmp_path)
     sdk = OnPremLlmSDK(config_path=setup, repo_root=tmp_path)
     with pytest.raises(PlumbingNotRunError, match="No plumbing manifest"):
-        sdk.run_sweep(prompts=["hi"])
+        sdk.run_sweep()
 
 
 @pytest.mark.integration
 def test_run_sweep_passes_guard_after_real_plumbing_run(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
-    """A real PlumbingTestRunner manifest MUST unlock run_sweep (reaches T-3.5 stub)."""
+    """A real PlumbingTestRunner manifest MUST unlock run_sweep end-to-end."""
     setup = _make_setup(tmp_path)
     _stub_externals(monkeypatch, tmp_path)
 
@@ -115,14 +126,16 @@ def test_run_sweep_passes_guard_after_real_plumbing_run(
     assert plumbing.overall == "ok"
     assert plumbing.manifest_path is not None and plumbing.manifest_path.exists()
 
-    with pytest.raises(NotImplementedError, match="T-3.5"):
-        sdk.run_sweep(prompts=["hi"])
+    _stub_sweep_service(monkeypatch)
+    assert sdk.run_sweep() == _SENTINEL_CSV
 
 
 @pytest.mark.integration
-def test_run_sweep_skip_plumbing_bypass_without_manifest(tmp_path: Path) -> None:
-    """``skip_plumbing=True`` MUST reach T-3.5 stub even with no manifest."""
+def test_run_sweep_skip_plumbing_bypass_without_manifest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    """``skip_plumbing=True`` MUST reach the sweep service even with no manifest."""
     setup = _make_setup(tmp_path)
+    _stub_sweep_service(monkeypatch)
     sdk = OnPremLlmSDK(config_path=setup, repo_root=tmp_path)
-    with pytest.raises(NotImplementedError, match="T-3.5"):
-        sdk.run_sweep(prompts=["hi"], skip_plumbing=True)
+    assert sdk.run_sweep(skip_plumbing=True) == _SENTINEL_CSV

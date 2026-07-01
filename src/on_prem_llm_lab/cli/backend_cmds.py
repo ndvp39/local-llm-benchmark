@@ -57,3 +57,30 @@ def run_airllm(
         raise typer.Exit(1) from exc
     typer.echo(f"OK: {target_label} -> {result.raw_log_path}")
     raise typer.Exit(0)
+
+
+@app.command("run-sweep")
+def run_sweep(
+    skip_plumbing: Annotated[
+        bool, typer.Option(
+            "--skip-plumbing", help="Bypass the ADR-010 plumbing precondition.",
+        ),
+    ] = False,
+    config: _ConfigOpt = _DEFAULT_CONFIG,
+    repo_root: _RepoRootOpt = None,
+) -> None:
+    """Full target × quantization × backend sweep (T-3.5) — writes sweep CSV + manifest."""
+    sdk = OnPremLlmSDK(
+        config_path=config, env=dict(os.environ),
+        repo_root=repo_root or Path.cwd(),
+    )
+    try:
+        csv_path = sdk.run_sweep(skip_plumbing=skip_plumbing)
+    except EnvironmentNotInitializedError as exc:
+        typer.echo(f"FAIL: env not initialised -- {exc}")
+        raise typer.Exit(1) from exc
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"FAIL: sweep failed -- {type(exc).__name__}: {exc}")
+        raise typer.Exit(1) from exc
+    typer.echo(f"OK: sweep complete -> {csv_path}")
+    raise typer.Exit(0)

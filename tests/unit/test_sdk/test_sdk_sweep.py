@@ -44,29 +44,44 @@ def _write_ok_manifest(repo_root: Path, stamp: str = "20260627T120000Z") -> Path
     return path
 
 
+_SENTINEL_CSV = Path("sentinel_sweep.csv")
+
+
+def _stub_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Short-circuit ``sweep_service.run_sweep`` past the guards for guard-only tests."""
+    monkeypatch.setattr(
+        "on_prem_llm_lab.sdk.sdk._run_sweep",
+        lambda **kwargs: _SENTINEL_CSV,
+    )
+
+
 def test_run_sweep_raises_plumbing_not_run_when_no_manifest(tmp_path: Path) -> None:
     """Env initialised but no plumbing manifest → PlumbingNotRunError."""
     setup = _initialised_setup(tmp_path)
     sdk = OnPremLlmSDK(config_path=setup, repo_root=tmp_path)
     with pytest.raises(PlumbingNotRunError, match="No plumbing manifest"):
-        sdk.run_sweep(prompts=["hi"])
+        sdk.run_sweep()
 
 
-def test_run_sweep_skip_plumbing_bypasses_the_guard(tmp_path: Path) -> None:
-    """``skip_plumbing=True`` MUST bypass the plumbing check (still hits T-3.5 stub)."""
+def test_run_sweep_skip_plumbing_bypasses_the_guard(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    """``skip_plumbing=True`` MUST bypass the plumbing check and reach the service."""
     setup = _initialised_setup(tmp_path)
+    _stub_service(monkeypatch)
     sdk = OnPremLlmSDK(config_path=setup, repo_root=tmp_path)
-    with pytest.raises(NotImplementedError, match="T-3.5"):
-        sdk.run_sweep(prompts=["hi"], skip_plumbing=True)
+    assert sdk.run_sweep(skip_plumbing=True) == _SENTINEL_CSV
 
 
-def test_run_sweep_passes_guards_when_ok_manifest_present(tmp_path: Path) -> None:
-    """Env initialised + ok plumbing manifest → reaches NotImplementedError (T-3.5)."""
+def test_run_sweep_passes_guards_when_ok_manifest_present(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    """Env initialised + ok plumbing manifest → guards pass, service is invoked."""
     setup = _initialised_setup(tmp_path)
     _write_ok_manifest(tmp_path)
+    _stub_service(monkeypatch)
     sdk = OnPremLlmSDK(config_path=setup, repo_root=tmp_path)
-    with pytest.raises(NotImplementedError, match="T-3.5"):
-        sdk.run_sweep(prompts=["hi"])
+    assert sdk.run_sweep() == _SENTINEL_CSV
 
 
 def test_run_sweep_env_guard_fires_before_plumbing_guard(tmp_path: Path) -> None:
@@ -79,4 +94,4 @@ def test_run_sweep_env_guard_fires_before_plumbing_guard(tmp_path: Path) -> None
     sdk = OnPremLlmSDK(config_path=setup, repo_root=tmp_path)
     # No plumbing manifest either — but env guard takes precedence.
     with pytest.raises(EnvironmentNotInitializedError):
-        sdk.run_sweep(prompts=["hi"])
+        sdk.run_sweep()

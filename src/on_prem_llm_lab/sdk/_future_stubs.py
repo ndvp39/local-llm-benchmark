@@ -16,16 +16,6 @@ from typing import Any, NoReturn
 class _FutureStubsMixin:
     """Carries SDK methods awaiting later milestone implementation."""
 
-    def run_sweep(
-        self, prompts: list[str], *,
-        skip_plumbing: bool = False, **kwargs: Any,
-    ) -> NoReturn:
-        """target × quant × backend sweep. T-3.5 (M3)."""
-        self._require_initialized_env()  # type: ignore[attr-defined]
-        if not skip_plumbing:
-            self._require_current_plumbing()  # type: ignore[attr-defined]
-        raise NotImplementedError("T-3.5 lands in M3.")
-
     def run_qlora_finetune(
         self, target_label: str, dataset_path: Path, lora_config: Any,
     ) -> NoReturn:

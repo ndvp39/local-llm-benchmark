@@ -5,9 +5,9 @@
             "model": "claude-haiku-4-5-20251001",
             "in_per_million_usd": 1.00,
             "out_per_million_usd": 5.00,
-            "captured_at": null,
-            "source_url": null,
-            "note": "Placeholder prices. M4 / T-4.3 MUST replace with Anthropic's current published rates and set captured_at (ISO-8601 date) + source_url."
+            "captured_at": "2026-07-01",
+            "source_url": "https://www.anthropic.com/pricing (Claude Haiku 4.5 tier)",
+            "note": "Anthropic Claude Haiku 4.5 published rates as of the assistant's Jan-2026 knowledge cutoff. User MUST verify against anthropic.com/pricing before publishing the report — token prices can change. M4 / T-4.3 consumes these to compute the Anthropic curve of the 3-curve break-even chart (FR-14 / K7)."
         }
     }
 }

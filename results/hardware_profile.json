@@ -1,0 +1,27 @@
+{
+  "captured_at": "2026-06-30T17:22:50Z",
+  "os": "Windows-10-10.0.19045-SP0",
+  "python": "3.12.13",
+  "cpu": {
+    "model": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "cores_physical": 4,
+    "cores_logical": 8
+  },
+  "ram": {
+    "total_gb": 7.804008483886719,
+    "available_gb": 2.9108810424804688
+  },
+  "gpu": {
+    "present": false,
+    "model": null,
+    "vram_gb": null
+  },
+  "disk": {
+    "free_gb": 392.8479461669922,
+    "fs": null,
+    "kind": "unknown",
+    "measured_at": "D:\\AI_agents_course\\airllm_shards"
+  },
+  "source": "config/setup.json.hardware_constraints via HardwareScanner (T-1.5)",
+  "extracted_at": "2026-07-01T18:58:11Z"
+}

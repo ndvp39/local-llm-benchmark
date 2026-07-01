@@ -13,9 +13,12 @@ from __future__ import annotations
 # which read HF_HOME at *import time* and cache it — a late load_dotenv()
 # leaves HF downloads going to the default C: cache even though the .env
 # says D:. See prompts_book §11.9 for the disk-full incident.
+# override=True: parent shell may pass HF_HOME="" (empty) which python-dotenv
+# treats as "already set" and skips; without override, downloads silently
+# fall back to C:\Users\<user>\.cache\huggingface\ even with .env present.
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 import os  # noqa: E402
 from pathlib import Path  # noqa: E402

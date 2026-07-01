@@ -1,0 +1,36 @@
+{
+  "captured_at": "2026-07-01T16:56:01Z",
+  "plumbing_test_model": {
+    "id": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "quantization": "fp16",
+    "label": "llama3-8b-fp16-airllm-plumbing",
+    "loader": "airllm"
+  },
+  "stages": {
+    "download": {
+      "status": "ok",
+      "duration_s": 26.9769,
+      "path": "D:/AI_agents_course/hf_cache\\hub\\models--meta-llama--Meta-Llama-3-8B-Instruct\\snapshots\\8afb486c1db24fe5011ec46dfbe5b5dccdb575c2"
+    },
+    "mmap_allocation": {
+      "status": "ok",
+      "duration_s": 11.4054,
+      "layers": 35,
+      "loader": "airllm"
+    },
+    "metric_collection": {
+      "status": "ok",
+      "duration_s": 1112.3477,
+      "ttft_ms": 370175.49,
+      "tpot_ms": 371081.12,
+      "peak_ram_mb": 1287.37,
+      "tokens_generated": 2
+    },
+    "manifest_write": {
+      "status": "ok",
+      "path": "C:\\ai_agents_msc_course\\hw5\\results\\plumbing_20260701T165601Z.json"
+    }
+  },
+  "overall": "ok",
+  "remediation_hint": null
+}
