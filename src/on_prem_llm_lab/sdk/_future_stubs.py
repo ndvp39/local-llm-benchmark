@@ -16,13 +16,6 @@ from typing import Any, NoReturn
 class _FutureStubsMixin:
     """Carries SDK methods awaiting later milestone implementation."""
 
-    def run_airllm(
-        self, target_label: str, prompt: str, **kwargs: Any,
-    ) -> NoReturn:
-        """AirLLM back-end run. Implementation: T-3.1 (M3)."""
-        self._require_initialized_env()  # type: ignore[attr-defined]
-        raise NotImplementedError("T-3.1 lands in M3.")
-
     def run_sweep(
         self, prompts: list[str], *,
         skip_plumbing: bool = False, **kwargs: Any,

@@ -48,7 +48,7 @@ def _invocations(sdk: OnPremLlmSDK) -> list[Callable[[], object]]:
     return [
         sdk.run_plumbing_test,
         lambda: sdk.run_baseline("llama3-8b-fp16", prompt="hello"),
-        lambda: sdk.run_airllm("llama3-8b-fp16", "hello"),
+        lambda: sdk.run_airllm("llama3-8b-fp16", prompt="hello"),
         lambda: sdk.run_sweep(["hello"]),
         lambda: sdk.run_qlora_finetune("llama3-8b-fp16", Path("ds"), {}),
         lambda: sdk.economic_analysis({}),

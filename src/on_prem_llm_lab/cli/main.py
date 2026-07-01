@@ -173,5 +173,7 @@ def run_baseline(
     raise typer.Exit(1 if failures else 0)
 
 
+from on_prem_llm_lab.cli import backend_cmds as _backend_cmds  # noqa: E402, F401
+
 if __name__ == "__main__":
     app()

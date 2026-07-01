@@ -15,6 +15,7 @@ from pathlib import Path
 
 from on_prem_llm_lab.backends.base import BackendRunResult
 from on_prem_llm_lab.sdk._future_stubs import _FutureStubsMixin
+from on_prem_llm_lab.services.airllm_service import run_airllm as _run_airllm
 from on_prem_llm_lab.services.baseline_service import run_baseline as _run_baseline
 from on_prem_llm_lab.services.hardware_scanner import HardwareScanner
 from on_prem_llm_lab.services.hardware_scanner_types import HardwareScanResult
@@ -119,6 +120,21 @@ class OnPremLlmSDK(_FutureStubsMixin):
             results_dir=results_dir,
         )
         return runner.run()
+
+    def run_airllm(
+        self, target_label: str, *,
+        prompt: str | None = None, quantization: str | None = None,
+        max_new_tokens: int | None = None,
+    ) -> BackendRunResult:
+        """Single-cell AirLLM run (T-3.5a)."""
+        self._require_initialized_env()
+        cfg = json.loads(self.config_path.read_text(encoding="utf-8"))
+        return _run_airllm(
+            target_label=target_label, config=cfg,
+            results_dir=self.repo_root / "results", prompt=prompt,
+            quantization=quantization, max_new_tokens=max_new_tokens,
+            repo_root=self.repo_root,
+        )
 
     def run_baseline(
         self,
