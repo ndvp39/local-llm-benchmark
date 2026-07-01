@@ -49,27 +49,45 @@ def load_causal_lm(
     model_id: str,
     quantization: str,
     *,
-    device_map: str = "auto",
+    device_map: str | None = "auto",
     trust_remote_code: bool = False,
+    low_cpu_mem_usage: bool = True,
+    max_memory: dict[str, str] | None = None,
 ) -> LoadedModel:
-    """Load model + tokenizer via the ``AutoModel*`` factories (ADR-009)."""
+    """Load model + tokenizer via the ``AutoModel*`` factories (ADR-009).
+
+    ``device_map`` + ``low_cpu_mem_usage`` + ``max_memory`` are exposed
+    knobs (T-2.11 fix) so the Direct backend can force the naive
+    RAM-constrained load path that PRD SC-1's "baseline must fail
+    visibly" narrative depends on. Leaving the defaults gives the smart
+    accelerate path (auto disk-offload, unbounded CPU RAM) appropriate
+    for AirLLM-style callers.
+
+    Passing ``max_memory={"cpu": "6GB"}`` without an offload folder
+    forces accelerate to raise ``ValueError`` (Python-level, catchable)
+    if the model won't fit — the honest baseline failure mode on
+    under-resourced hardware. Without this constraint on Windows the
+    naive load can OS-segfault before Python catches anything.
+    """
     if quantization not in SUPPORTED_QUANTIZATIONS:
         raise UnsupportedQuantizationError(
             f"quantization {quantization!r} not in {SUPPORTED_QUANTIZATIONS}"
         )
     dtype = _DTYPE_BY_QUANT[quantization]
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=trust_remote_code)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        torch_dtype=dtype,
-        device_map=device_map,
-        low_cpu_mem_usage=True,
-    )
+    kwargs: dict[str, Any] = {
+        "torch_dtype": dtype,
+        "device_map": device_map,
+        "low_cpu_mem_usage": low_cpu_mem_usage,
+    }
+    if max_memory is not None:
+        kwargs["max_memory"] = max_memory
+    model = AutoModelForCausalLM.from_pretrained(model_id, **kwargs)
     return LoadedModel(
         model=model,
         tokenizer=tokenizer,
         resolved_dtype=str(dtype),
-        resolved_device_map=device_map,
+        resolved_device_map=str(device_map),
     )
 
 

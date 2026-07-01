@@ -1,0 +1,9 @@
+{
+  "target_label": "qwen2-7b-q4",
+  "model_id": "Qwen/Qwen2-7B-Instruct",
+  "quantization": "q4",
+  "status": "failed",
+  "error_type": "OSError",
+  "error_message": "The paging file is too small for this operation to complete. (os error 1455)",
+  "captured_at": "20260701T122111Z"
+}

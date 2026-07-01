@@ -1,0 +1,9 @@
+{
+  "target_label": "qwen2-7b-q4",
+  "model_id": "Qwen/Qwen2-7B-Instruct",
+  "quantization": "q4",
+  "status": "failed",
+  "error_type": "MemoryError",
+  "error_message": "Direct baseline pre-flight: Qwen/Qwen2-7B-Instruct weights = 10.87 GiB (cached safetensors), available RAM = 1.54 GiB. Naive load would need ~10.87 GiB contiguous, exceeding the 90 % headroom. On Windows the OS kills such allocations at signal level (exit 139) before Python can catch. AirLLM (T-3.1) rescues via per-layer mmap streaming.",
+  "captured_at": "20260701T123021Z"
+}

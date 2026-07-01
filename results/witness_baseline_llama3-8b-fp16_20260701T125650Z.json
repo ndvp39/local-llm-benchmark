@@ -1,0 +1,63 @@
+{
+  "target_label": "llama3-8b-fp16",
+  "started_at": "2026-07-01T12:56:50.901489Z",
+  "ended_at": "2026-07-01T12:57:01.051856Z",
+  "wall_s": 10.148,
+  "exit_code": 1,
+  "interpretation": "windows_paging_file_exhausted_os_error_1455",
+  "peak_child_rss_gib": 0.2864,
+  "trough_sys_available_gib": 1.4726,
+  "sample_count": 6,
+  "sample_interval_s": 2.0,
+  "stderr_tail": "C:\\AI_Agents_MSC_course\\HW5\\.venv\\Lib\\site-packages\\torch\\cuda\\__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.\r\n  import pynvml  # type: ignore[import]\r\n\rLoading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]\rLoading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]\r\n[baseline] FAIL llama3-8b-fp16: OSError: The paging file is too small for this operation to complete. (os error 1455)\r\n",
+  "samples": [
+    {
+      "ts": "2026-07-01T12:56:50.923815Z",
+      "elapsed_s": 0.031,
+      "sys_available_gib": 1.6933,
+      "sys_used_gib": 6.1107,
+      "sys_percent": 78.3,
+      "child_rss_gib": 0.019
+    },
+    {
+      "ts": "2026-07-01T12:56:52.947886Z",
+      "elapsed_s": 2.047,
+      "sys_available_gib": 1.5085,
+      "sys_used_gib": 6.2955,
+      "sys_percent": 80.7,
+      "child_rss_gib": 0.1906
+    },
+    {
+      "ts": "2026-07-01T12:56:54.974228Z",
+      "elapsed_s": 4.078,
+      "sys_available_gib": 1.49,
+      "sys_used_gib": 6.3141,
+      "sys_percent": 80.9,
+      "child_rss_gib": 0.2289
+    },
+    {
+      "ts": "2026-07-01T12:56:57.001662Z",
+      "elapsed_s": 6.103,
+      "sys_available_gib": 1.5101,
+      "sys_used_gib": 6.2939,
+      "sys_percent": 80.6,
+      "child_rss_gib": 0.2472
+    },
+    {
+      "ts": "2026-07-01T12:56:59.024189Z",
+      "elapsed_s": 8.131,
+      "sys_available_gib": 1.4726,
+      "sys_used_gib": 6.3314,
+      "sys_percent": 81.1,
+      "child_rss_gib": 0.2864
+    },
+    {
+      "ts": "2026-07-01T12:57:01.051856Z",
+      "elapsed_s": 10.148,
+      "sys_available_gib": 1.7275,
+      "sys_used_gib": 6.0765,
+      "sys_percent": 77.9,
+      "child_rss_gib": 0.0
+    }
+  ]
+}

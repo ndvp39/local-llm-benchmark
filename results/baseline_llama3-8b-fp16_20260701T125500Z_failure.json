@@ -1,0 +1,9 @@
+{
+  "target_label": "llama3-8b-fp16",
+  "model_id": "meta-llama/Meta-Llama-3-8B-Instruct",
+  "quantization": "fp16",
+  "status": "failed",
+  "error_type": "OSError",
+  "error_message": "The paging file is too small for this operation to complete. (os error 1455)",
+  "captured_at": "20260701T125500Z"
+}

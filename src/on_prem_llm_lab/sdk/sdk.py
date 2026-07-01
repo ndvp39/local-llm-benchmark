@@ -126,6 +126,7 @@ class OnPremLlmSDK(_FutureStubsMixin):
         *,
         prompt: str | None = None,
         max_new_tokens: int | None = None,
+        skip_preflight: bool = False,
     ) -> BackendRunResult:
         """Direct back-end baseline run on one oversized target (T-2.10 / SC-1)."""
         self._require_initialized_env()
@@ -137,6 +138,7 @@ class OnPremLlmSDK(_FutureStubsMixin):
             prompt=prompt,
             max_new_tokens=max_new_tokens,
             repo_root=self.repo_root,
+            skip_preflight=skip_preflight,
         )
 
 __all__ = [

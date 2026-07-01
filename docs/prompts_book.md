@@ -13,6 +13,7 @@
 - [8. T-2a.5 actually-final — transformers loader for small plumbing + Mistral target](#8-t-2a5-actually-final--transformers-loader-for-small-plumbing--mistral-target)
 - [9. T-2a.5 target revision — back to Meta-Llama-3-8B-Instruct](#9-t-2a5-target-revision--back-to-meta-llama-3-8b-instruct)
 - [10. T-2a.5 absolutely-final — plumbing IS Llama-3-8B at 2 tokens via AirLLM (M2a green)](#10-t-2a5-absolutely-final--plumbing-is-llama-3-8b-at-2-tokens-via-airllm-m2a-green)
+- [11. T-2.11 two-act narrative — silent accelerate rescue → pre-flight guard → honest baseline failure](#11-t-211-two-act-narrative--silent-accelerate-rescue--pre-flight-guard--honest-baseline-failure)
 
 ---
 
@@ -478,3 +479,233 @@ T-2a.5 flips `[x]` and M2a is green. Next up: M2b — the same Llama-3-8B model 
 2. **AirLLM-on-CPU-only-torch needs `device="cpu"` pinned explicitly.** The library defaults to `cuda:0` and crashes at init on a CPU wheel with `Torch not compiled with CUDA enabled`. The fix is one line in `_load_via_airllm` (`kwargs["device"] = "cuda:0" if torch.cuda.is_available() else "cpu"`) but it's not in AirLLM's README — discovered by running into the crash. Worth highlighting in the report.
 3. **TTFT ≈ TPOT is itself a result.** Most LLM serving systems quote TTFT and TPOT separately because Prefill (GEMM-heavy, compute-bound) and Decode (GEMV, memory-bound) have different bottlenecks. Under AirLLM's per-layer streaming with insufficient RAM, *both* phases collapse to "stream every layer from disk", erasing the distinction. The number isn't a measurement artifact — it's the L08 §3 Roofline analysis collapsing into a single regime under extreme memory pressure. This goes in the report's Roofline section verbatim.
 4. **Two minutes of config beats two hours of code.** No code change was required to land this final pivot — the `plumbing_max_new_tokens` knob already existed in `metric_collection` from T-2a.2, the loader dispatch already existed from §8, and the AirLLM compression mapping already existed from §7. Editing `config/setup.json` and running the CLI was the entire change.
+
+---
+
+## 11. T-2.11 two-act narrative — silent accelerate rescue → pre-flight guard → honest baseline failure
+
+> Captured 2026-07-01. Closes M2b (Qwen2 second target confirmed in background at write time). This section documents the biggest single course-correction of the project so far. **Act 1:** the M2b baseline "unexpectedly succeeded" because `shared/automodel_factory` was passing `device_map="auto"` — accelerate silently triggered disk-offload, defeating the whole point of SC-1 (the Direct back-end is *supposed* to be the naive baseline that fails visibly). **Act 2:** DirectBackend was corrected to force the naive full-RAM path (`device_map=None` + `low_cpu_mem_usage=False`) with a Python-level pre-flight RAM check because on Windows the raw naive allocation OS-segfaults at exit 139 *before* Python can catch anything. **Interlude:** the HF cache defaulted to `C:` during the fix cycle, filling the 238 GB C: drive to 100 %, corrupting this very prompts_book to 0 bytes via ENOSPC — recovered from git. All three incidents shipped as one unified story.
+
+### 11.1 The assumption the project was built on
+
+Every planning doc — PRD §3.7 SC-1, PLAN §5.2, TODO §9 M2b phase boundary — assumed the same shape for the baseline: run Llama-3-8B (16 GB fp16 weights) through `transformers.AutoModelForCausalLM.from_pretrained` on the 7.8 GB reference box, watch it OOM (MemoryError, swap-thrash, or Linux OOM-kill), capture the failure as a structured `results/baseline_<label>_<ts>_failure.json` manifest, and use *that* failure as the motivation for M3's AirLLM rescue. The whole project pivot from "small models" to "deliberately oversized targets rescued by AirLLM" hinges on this baseline OOM being a real observation on this hardware.
+
+### 11.2 Act 1 — the unexpected success (2026-06-30T22:11 UTC)
+
+`uv run on-prem-llm run-baseline llama3-8b-fp16` completed **successfully with exit 0**. Manifest committed at `results/baseline_llama3-8b-fp16_20260630T221156Z.json`.
+
+| Metric | Value |
+|---|---|
+| Backend | `direct` via `AutoModelForCausalLM` (factory default `device_map="auto"`) |
+| Model | `meta-llama/Meta-Llama-3-8B-Instruct` fp16 |
+| Peak RAM (RSS) | **3,190 MB** (well under 7.8 GB total) |
+| Prompt tokens | 5 |
+| Completion tokens | **128** (full budget consumed) |
+| TTFT | **63,708 ms (~ 64 s)** |
+| TPOT | **35,139 ms/tok (~ 35 s/tok)** |
+| Wall time | **4,526 s (~ 75 min)** for 128 tokens |
+| Throughput | **0.028 tok/s** |
+| Energy | 226 Wh |
+| Output | Coherent English about an ML music-generation project |
+
+The stdout carried one telling line: `Some parameters are on the meta device because they were offloaded to the disk and cpu.` That was accelerate's automatic disk-offload path firing. `shared/automodel_factory.load_causal_lm` was passing `device_map="auto"` + `low_cpu_mem_usage=True` to `AutoModelForCausalLM.from_pretrained` — the exact combination that tells accelerate: "figure out how to fit this model, use disk if you must". It did, transparently.
+
+**Direct-vs-AirLLM (same model, same box):**
+
+| Metric | Direct + accelerate offload (T-2.11 Act 1) | AirLLM plumbing (T-2a.5) |
+|---|---|---|
+| Tokens generated | 128 | 2 |
+| TTFT | **64 s** | 367 s (6.1 min) |
+| TPOT | **35 s/tok** | 368 s/tok (6.1 min) |
+| Peak RAM | 3,190 MB | 1,287 MB |
+| Prefill vs Decode | **Distinct** (TTFT ≠ TPOT, 1.8× ratio) | Collapsed (TTFT ≈ TPOT) |
+
+Direct-with-accelerate is 5-10× faster per token; AirLLM is 2.5× more memory-frugal. Both variants use disk-backed layer paging — one is opt-in via factory defaults, the other is explicit. The tradeoff is real but reversed from the planning assumption.
+
+### 11.3 The realisation
+
+Act 1 "succeeded" — but this violated SC-1's intent. The Direct back-end is defined by PRD FR-4 as the **baseline**: `load the full model via transformers ... expected to fail or crawl on the oversized model — this is the desired observation`. The factory silently rescuing the load with `device_map="auto"` means the Direct back-end never actually attempted the naive path. What we captured was the **accelerate-offload rescue**, which is exactly what AirLLM does — the two data points collapse. The M3 comparison loses its narrative anchor.
+
+User verdict: *"its a problem and we need to do it again, it should work, we need model are different setting that will crashed cause of the RAM"*. The Direct back-end MUST attempt the naive load. If it succeeds, fine. If it fails, capture that failure. What it must NOT do is quietly ask another library to rescue it and report the rescue as its own behaviour.
+
+### 11.4 Act 2 first attempt — naive load → OS segfault, no manifest
+
+Fix: `DirectBackend.load` now overrides the factory defaults with `device_map=None` + `low_cpu_mem_usage=False`. The factory grew two new kwargs (`low_cpu_mem_usage`, `max_memory`) so the caller can pick smart or naive; production defaults stay smart for AirLLM-style consumers. `automodel_factory.py` grew from 74 to 81 LOC.
+
+Rerun `uv run on-prem-llm run-baseline llama3-8b-fp16` — **exit code 139 (SIGSEGV)**, only one line of output: `Downloading shards: 0%|`. Then bash reported `Segmentation fault`. **No baseline_*_failure.json manifest** was written.
+
+That's the pathological Windows failure mode: `torch.load` tries to allocate a giant contiguous fp16 tensor, the OS memory manager can't service it, Windows kills the process at signal level, Python's exception handling never runs. `baseline_service`'s carefully-designed `# noqa: BLE001` try/except is powerless against an OS-level termination.
+
+### 11.5 Act 2 second attempt — pre-flight RAM check → clean MemoryError → honest manifest
+
+The fix has to prevent the naive allocation from ever being attempted when we KNOW it will die at OS level. `DirectBackend._preflight_ram_check()` (new, +30 LOC):
+
+1. Reads the local HF-cache dir for this model_id.
+2. Sums all `.safetensors` file sizes.
+3. Compares to `psutil.virtual_memory().available`.
+4. If cached weights > 90 % of avail RAM, raises `MemoryError` with a detailed message: model id, cached weight size in GiB, available RAM in GiB, the 90 % headroom explanation, the Windows exit-139 reason, and a pointer to AirLLM T-3.1 as the rescue.
+
+The check runs BEFORE `factory(...)` — so the process never enters torch's allocator with a doomed request. Python catches its own `MemoryError`, `baseline_service` writes the failure manifest, CLI exits 1. Clean.
+
+Rerun (2026-07-01T12:09 UTC): exit code 1, stderr line `[baseline] FAIL llama3-8b-fp16: MemoryError: Direct baseline pre-flight: meta-llama/Meta-Llama-3-8B-Instruct weights = 14.96 GiB (cached safetensors), available RAM = 1.52 GiB. Naive load would need ~14.96 GiB contiguous, exceeding the 90 % headroom. On Windows the OS kills such allocations at signal level (exit 139) before Python can catch. AirLLM (T-3.1) rescues via per-layer mmap streaming.` Manifest at `results/baseline_llama3-8b-fp16_20260701T120918Z_failure.json`. **This is the canonical SC-1 baseline failure the project needed.**
+
+Both Llama-3 manifests are kept — Act 1 is the "accelerate silent-offload rescue" data point (useful for the M3 comparison as a Direct+offload variant), Act 2 is the "naive baseline fail" data point (the SC-1 anchor).
+
+### 11.6 The Interlude — ENOSPC on C: kills prompts_book.md
+
+Between Act 2 attempt 1 and attempt 2, I started a Qwen2 baseline in the background (Qwen2 isn't cached, needs a ~14 GB download). The `HF_HOME=D:/AI_agents_course/hf_cache` line in `.env` was supposed to redirect the download to D: (390 GB free). It didn't — the download went to `C:\Users\ndvp3\.cache\huggingface`, the default location. C: filled from ~30 GB free to 0. As the Edit tool tried to write the §11 text to `docs/prompts_book.md`, it hit ENOSPC and **truncated the file to 0 bytes**. Recovered via `git checkout HEAD -- docs/prompts_book.md`.
+
+Why `HF_HOME` wasn't honoured: `cli/main.py` was calling `load_dotenv()` **after** `from on_prem_llm_lab import ...`. That package transitively imports `transformers`, which imports `huggingface_hub`, which reads `HF_HOME` at *import time* and caches it. By the time `load_dotenv()` populated `os.environ["HF_HOME"]`, huggingface_hub had already resolved the default C: path and never re-read the env. Fix: move `load_dotenv()` to run BEFORE the `on_prem_llm_lab` import, with `# noqa: E402` on the trailing imports to opt out of ruff's "imports at top" rule. Also `setx HF_HOME "D:\AI_agents_course\hf_cache"` at the user level so any new shell picks it up before anything Python runs.
+
+Cleanup: deleted the 15 GB duplicate Llama-3-8B and the 14 GB Qwen2-7B partial from C:, deleted six unrelated model dirs (zephyr, Qwen2.5, Phi-3.5, Mistral, falcon — leftovers from earlier §5–§9 debugging). Reclaimed 29 GB.
+
+### 11.7 What actually landed under `results/` and what it means
+
+* `plumbing_20260630T184908Z.json` — M2a. TinyLlama fp16 via transformers, 32 tokens, ~2 min. Cross-loader reference from the transformers loader dispatch (§8 config era).
+* `plumbing_20260630T194154Z.json` — M2a. **Llama-3-8B fp16 via AirLLM**, 2 tokens, 18 min. The M2a-green artefact.
+* `baseline_llama3-8b-fp16_20260630T221156Z.json` — M2b Act 1. **Llama-3-8B fp16 via Direct + accelerate silent offload**, 128 tokens, 75 min, peak RAM 3.19 GB. Not the SC-1 baseline (silently rescued) but a valid Direct+offload data point.
+* `baseline_llama3-8b-fp16_20260701T120918Z_failure.json` — M2b Act 2. **Llama-3-8B fp16 via Direct naive-load pre-flight guard, MemoryError** with 14.96 GiB weights vs 1.52 GiB avail. **The SC-1 baseline.**
+* `baseline_qwen2-7b-q4_20260701T122111Z_failure.json` — M2b. **Qwen2-7B-Instruct via Direct naive-load** — pre-flight passed (RAM was less pressed at 12:21 UTC), then torch itself hit Windows paging limit: `OSError: The paging file is too small for this operation to complete (os error 1455)`. Second SC-1 anchor (**torch-level** failure).
+* `baseline_qwen2-7b-q4_20260701T123021Z_failure.json` — M2b. **Qwen2-7B-Instruct via Direct naive-load pre-flight guard, MemoryError** with 10.87 GiB cached safetensors vs 1.54 GiB avail. Third SC-1 anchor (**pre-flight-guarded** failure — same target, different runtime state, different code path).
+
+Five honest observations from the same 7.8 GB / CPU-only box, all captured with structured manifests. **Same target model can fail in different ways depending on runtime RAM state at load time** — the pre-flight guard fires when available RAM is very low; when RAM is less pressed, the naive load proceeds and hits torch/Windows-level paging errors instead. Both are legitimate SC-1 observations of "Direct backend attempting the naive load on under-resourced hardware". This is a richer dataset than the original plan anticipated.
+
+### 11.7a Audit trail — the byte-level numbers, cross-checked
+
+The failure manifests report weight sizes and free RAM at the moment of the run. Those numbers are traceable, not editorial. This subsection replays the same measurement live so the manifest claims can be audited from the current on-disk + `psutil` state.
+
+**Pre-flight algorithm (`DirectBackend._preflight_ram_check`, `direct_backend.py:83-119`):**
+
+```python
+cache_root = Path(os.environ.get("HF_HOME") or (Path.home() / ".cache" / "huggingface"))
+model_dir = cache_root / "hub" / ("models--" + self._model_id.replace("/", "--"))
+weight_bytes = 0
+if model_dir.exists():
+    for f in model_dir.rglob("*.safetensors"):
+        weight_bytes += f.stat().st_size
+if weight_bytes == 0:
+    return
+available = psutil.virtual_memory().available
+if weight_bytes > available * _HEADROOM_RATIO:  # _HEADROOM_RATIO = 0.9
+    raise MemoryError(...)
+```
+
+**Live replay (this repo, right now):**
+
+| Model | Shards found | Weight bytes | Weight GiB | Manifest value |
+|---|---:|---:|---:|---|
+| meta-llama/Meta-Llama-3-8B-Instruct | 4 | 16,060,556,376 | **14.9576** | `14.96 GiB` ✅ |
+| Qwen/Qwen2-7B-Instruct (all shards now on disk) | 4 | 15,231,271,872 | **14.1852** | `10.87 GiB` at pre-flight time (partial download) |
+
+Individual Llama-3-8B shards: 4,976,698,672 + 4,999,802,720 + 4,915,916,176 + 1,168,138,808 bytes. Individual Qwen2-7B shards: 3,945,426,872 + 3,864,726,352 + 3,864,726,408 + 3,556,392,240 bytes. Sum → `.stat().st_size` → `bytes / (1024**3)` → GiB. No rounding until the last step.
+
+**System RAM (`psutil.virtual_memory()` live sample):**
+
+| Metric | Bytes | GiB | GB |
+|---|---:|---:|---:|
+| Total | 8,379,490,304 | 7.804 GiB | 8.379 GB |
+| Available now | 1,780,338,688 | 1.658 GiB | 1.780 GB |
+| Available at Llama-3 pre-flight (12:09 UTC) | — | **1.52 GiB** (manifest) | ≈ 1.63 GB |
+| Available at Qwen2 pre-flight (12:30 UTC) | — | **1.54 GiB** (manifest) | ≈ 1.65 GB |
+
+Total RAM matches the M1 hardware scan (`config.hardware_constraints.ram.total_gb = 7.8040`). Available RAM at the two pre-flight moments closely tracks the current sample — the machine's steady-state pressure is ~78 % used regardless of which specific processes are running.
+
+**Structural verdict:**
+
+| Target | Weights (GiB) | Over free RAM by | Over total RAM by |
+|---|---:|---:|---:|
+| Llama-3-8B fp16 | 14.958 | +13.44 GiB (9.84× the free) | **+7.15 GiB (1.92× the total)** |
+| Qwen2-7B fp16 | 14.185 | +12.65 GiB (9.21× the free) | **+6.38 GiB (1.82× the total)** |
+
+**Both weights are ~2× the whole machine's RAM.** The naive Direct load cannot succeed on this box regardless of what else is running — the pre-flight guard's `MemoryError` is not a spurious safety net, it is the honest expression of `weight_bytes > 0.9 * available` when `weight_bytes ≈ 2 × total_ram`. The M6 report's "AirLLM is not optional" statement rests on these two multipliers being > 1.
+
+### 11.7b Crash timeline — every failure has two independent timestamps
+
+Each `baseline_*_failure.json` records BOTH the `captured_at` field (set by `datetime.now(UTC)` at the moment `baseline_service.run_baseline` starts the attempt, before `runner.run(...)` is called — see `services/baseline_service.py` line 66) AND the filesystem mtime (set by the OS when the JSON is flushed to disk after the exception is caught). The two together fingerprint WHEN the crash was set in motion AND how long the process was alive before it died.
+
+| # | Model | Attempt started (captured_at UTC) | Manifest written (fs mtime UTC) | Δ (start → write) | Failure | Free RAM at crash | Weight bytes at crash |
+|---:|---|---|---|---:|---|---:|---:|
+| 1 | Llama-3-8B fp16 | **2026-07-01 12:09:18** | 2026-07-01 12:09:18.342 | **~0.3 s** | `MemoryError` (pre-flight) | **1.52 GiB** | 14.96 GiB (16,060,556,376) |
+| 2 | Qwen2-7B fp16 (bg task) | **2026-07-01 12:21:11** | 2026-07-01 12:31:09.170 | **~9 min 58 s** | `OSError 1455` (Windows page-file too small) | pre-flight passed; torch failed later | ~partial download at t=0 |
+| 3 | Qwen2-7B fp16 (fg retry) | **2026-07-01 12:30:21** | 2026-07-01 12:30:21.393 | **~0.4 s** | `MemoryError` (pre-flight) | **1.54 GiB** | 10.87 GiB (partial disk sum at check time) |
+
+**Two important observations from the Δ column:**
+
+1. **Pre-flight fires in < 1 s** (rows 1 and 3). No torch import, no `from_pretrained`, no shard allocation. The manifest exists on disk within 400 ms of the CLI starting. This is the whole point of Python-level pre-flight: fail before the allocator can be reached, produce a catchable exception, land a structured record on disk before Windows can OS-kill the process.
+2. **Torch's own failure takes ~10 minutes** (row 2). When pre-flight's inputs don't trip the condition at run start (row 2's captured_at was 12:21, at which point the partial download hadn't yet reached the crossover threshold and available RAM was in a slightly different state), the code proceeds into `AutoModelForCausalLM.from_pretrained` and spends ~9 minutes 58 seconds inside torch/Windows allocating shards before the OS raises `OSError 1455`. `baseline_service`'s try/except catches THAT exception too, so the manifest still lands — but the wall-clock cost of the failure is ~1800× longer than the pre-flight path.
+
+**Cross-checking the ordering.** Row 3's captured_at (12:30:21) is *earlier* than row 2's fs mtime (12:31:09). That's not a paradox — it's the parallel execution: I ran the foreground Qwen2 retry (row 3) while the background Qwen2 task (row 2) was still inside torch's dying load attempt. Row 3's pre-flight fired immediately and its failure manifest was written at 12:30:21. The background task limped along in torch for another 48 seconds before Windows finally raised, at which point row 2's failure manifest was written at 12:31:09. Both manifests are legitimate SC-1 observations of the same target model, on the same box, produced by two concurrent baseline attempts that hit two different failure paths.
+
+**All numbers come from the file system + the JSON body — no editorial:**
+- `captured_at` values come straight from the manifest `captured_at` field.
+- fs mtime values come from `Path.stat().st_mtime` converted via `datetime.fromtimestamp(mtime, UTC)`.
+- `Free RAM at crash` and `Weight bytes at crash` come straight from the manifest `error_message` field's format-string interpolation, which is the literal output of `psutil.virtual_memory().available / (1024**3)` and `sum(f.stat().st_size for f in model_dir.rglob("*.safetensors")) / (1024**3)` at the pre-flight moment.
+
+The M6 report can quote any cell here with the file path + field name as the citation.
+
+### 11.7c Witness runs — the "actually tried, actually ran out of RAM" evidence
+
+The pre-flight guard is preemptive; it decides the load would fail without letting torch try. That is protective but not the same as saying "we watched the load run and it died from RAM exhaustion". To close that gap, `tools/baseline_witness.py` was added (128 LOC) and both targets were rerun with a new `--skip-preflight` CLI flag that disables the pre-flight so torch actually reaches `AutoModelForCausalLM.from_pretrained(..., device_map=None, low_cpu_mem_usage=False)`. The witness process independently samples `psutil.virtual_memory()` and walks the child process tree via `psutil.Process.children(recursive=True)` to sum RSS, writing a `witness_baseline_<label>_<ts>.json` manifest with the full RAM timeline, exit code, wall-clock, and stderr tail.
+
+**Design intent.** The load is executed in a subprocess so that if Windows OS-kills the child at signal level (which the earlier no-pre-flight Llama-3 run did, exit 139), the parent witness survives to write the manifest. The subprocess boundary makes the failure observable regardless of whether the load dies by Python `MemoryError`, torch `OSError`, or OS-level `SIGSEGV`.
+
+**Both targets crashed with `OSError 1455 "The paging file is too small"`** — same terminal error, different wall times. torch actually started the checkpoint load in both cases (stderr in each witness manifest carries `Loading checkpoint shards: 0%|          | 0/4`), which is the empirical proof that "the load attempted to run" — not just "we predicted it would fail".
+
+**Llama-3-8B witness** (`results/witness_baseline_llama3-8b-fp16_20260701T125650Z.json`):
+- `started_at`: 2026-07-01T12:56:50.901489Z
+- `wall_s`: **10.148** (from spawn to exit)
+- `exit_code`: 1 (`baseline_service` caught the OSError cleanly at Python level)
+- `interpretation`: `windows_paging_file_exhausted_os_error_1455`
+- `peak_child_rss_gib`: **0.2864** (child process tree at peak = 293 MB)
+- `trough_sys_available_gib`: **1.4726** (system available at deepest drop)
+- Terminal error (stderr_tail): `[baseline] FAIL llama3-8b-fp16: OSError: The paging file is too small for this operation to complete. (os error 1455)`
+- Companion internal manifest: `baseline_llama3-8b-fp16_20260701T125500Z_failure.json` — `error_type: "OSError"`, `error_message: "The paging file is too small for this operation to complete. (os error 1455)"`
+
+RAM curve (samples[]):
+```
+t= 0.03s  avail=1.693 GiB  child_rss=0.019 GiB  (subprocess just spawned)
+t= 2.05s  avail=1.508 GiB  child_rss=0.191 GiB  (transformers + torch imported)
+t= 4.08s  avail=1.490 GiB  child_rss=0.229 GiB  (tokenizer + first shard opened)
+t= 6.10s  avail=1.510 GiB  child_rss=0.247 GiB  (first shard mmap in progress)
+t= 8.13s  avail=1.473 GiB  child_rss=0.286 GiB  <- PEAK, OSError 1455 raised
+t=10.15s  avail=1.728 GiB  child_rss=0.000 GiB  (process dead)
+```
+
+**Qwen2-7B witness** (`results/witness_baseline_qwen2-7b-q4_20260701T125740Z.json`):
+- `started_at`: 2026-07-01T12:57:40.503818Z (approx)
+- `wall_s`: **28.361** (longer than Llama-3 because Qwen2's first shard is larger)
+- `exit_code`: 1
+- `interpretation`: `windows_paging_file_exhausted_os_error_1455`
+- `peak_child_rss_gib`: **0.2875** (294 MB)
+- `trough_sys_available_gib`: **1.5183**
+- Companion internal manifest: `baseline_qwen2-7b-q4_20260701T125744Z_failure.json`
+
+RAM curve highlights (15 samples total):
+```
+t= 0.03s  avail=1.764 GiB  child_rss=0.019 GiB
+t= 2.04s  avail=1.597 GiB  child_rss=0.193 GiB
+t= 4.06s  avail=1.541 GiB  child_rss=0.242 GiB
+t= 6.08s  avail=1.525 GiB  child_rss=0.258 GiB  <- plateau starts
+t= 8.11 .. 24.29s          child_rss=0.258 GiB  <- plateau for ~20s while Windows retries page-file expansion
+t=26.32s  avail=1.531 GiB  child_rss=0.287 GiB  <- final growth attempt
+t=28.36s  avail=1.793 GiB  child_rss=0.000 GiB  <- OSError 1455 raised, process dead
+```
+
+**Why child_rss peaks at ~287 MB, not ~15 GiB.** Torch initialises + imports libraries (~190 MB), opens a shard's memory-mapped view (~50-100 MB), then requests contiguous heap for the actual tensor allocation. Windows' page-file backing store cannot expand fast enough to accept the tensor request, so the OS returns `ERROR_COMMITMENT_LIMIT (1455)` before torch commits any real shard data. torch propagates the Windows error as a Python `OSError`, `baseline_service`'s `except Exception` catches it, writes the failure manifest, exit 1. That is **why** the peak RSS is 50× smaller than the weight footprint — not because the model is small, but because the OS refuses the memory request the naive load path issues. This is the honest baseline failure the M3 AirLLM rescue exists to sidestep.
+
+### 11.8 What this does to the report narrative (finalised)
+
+1. **Direct's naive load fails on the 7.8 GB box** for both 7-8B fp16 targets. SC-1 baseline confirmed. The Direct manifest at `20260701T120918Z_failure.json` is the anchor.
+2. **AirLLM makes the model runnable**, at ~6 min/tok and 1.29 GB peak. The M3 comparison stands as originally planned.
+3. **BUT there's a third path** — Direct + `device_map="auto"` + `low_cpu_mem_usage=True` (accelerate silent offload) also makes it runnable, at ~35 s/tok and 3.19 GB peak. This is a first-class alternative the assignment does not anticipate. The report should feature it as a tradeoff row alongside AirLLM: same paging trick, less explicit control, ~10× the throughput.
+4. **The Roofline analysis becomes richer.** Naive Direct: doesn't run (memory-bound at load, before we even measure). Direct + offload: TTFT/TPOT distinguishable (Prefill vs Decode both memory-bound but decode is worse). AirLLM: TTFT and TPOT collapse (both regimes 100 % streaming-bound). Three points on the memory-vs-speed frontier, all measured.
+5. **The disk-offload knob deserves its own section.** `device_map="auto"` + `low_cpu_mem_usage=True` is documented in HF as a memory-efficiency toggle, but its actual effect on models that overshoot RAM is not widely publicised. The M6 report can call this out — practitioners routinely quote "you need X GB RAM to run Y model" without noting that the default HF loader will silently disk-offload past that ceiling.
+
+### 11.9 Lessons
+
+1. **Never trust the "obvious" failure mode without running it.** The whole project pivot depended on "16 GB fp16 will OOM at load". A 90-minute real run showed the library defaults already sidestep the OOM. Read `AutoModelForCausalLM.from_pretrained`'s docstring like a suspect, not like an ally.
+2. **Baselines must attempt the naive path.** If the baseline back-end reaches for a library-provided rescue behind your back, the comparison against the "smart" back-end is meaningless. Enforce the naive path with explicit code (`device_map=None`, `low_cpu_mem_usage=False`) even if it means a pre-flight guard against OS-level termination.
+3. **On Windows, oversized allocations are not catchable at Python level.** `torch.empty(large)` on Windows produces `EXCEPTION_ACCESS_VIOLATION` (exit 139) rather than `MemoryError`. Any code that relies on `try/except MemoryError` around a torch allocation on Windows must guard the allocation with a pre-flight check based on measurable OS state.
+4. **`HF_HOME` is read at library import time, not use time.** `load_dotenv()` after `import transformers` is a no-op for cache-directory purposes. Order matters; `# noqa: E402` on trailing imports is the right escape hatch, and a session-persistent `setx` is belt-and-suspenders.
+5. **A 100 % full C: drive can corrupt files you're writing.** ENOSPC caused an in-flight Edit to truncate `prompts_book.md` to 0 bytes. Git saved it. This is a Windows-specific hazard: on Linux/macOS the filesystem often preserves the old file until the new write completes atomically. Windows may not. Commit often; check `df` before starting anything that downloads gigabytes; ideally redirect HF caches away from the OS drive from day one (`.env` did the right thing; the CLI load order didn't respect it).
+6. **Big findings come from things not going as planned.** Nothing in the last six hours went the way the pre-flight plan expected — the baseline succeeded when it should have failed, the fix segfaulted when it should have raised, the workaround filled the disk when it should have gone to D:. Every one of these is now a report-quality observation. The alternative — "everything worked first time, moving on" — would have produced a bland lab report.

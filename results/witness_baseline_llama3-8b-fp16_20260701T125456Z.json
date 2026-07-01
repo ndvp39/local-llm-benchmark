@@ -1,0 +1,159 @@
+{
+  "target_label": "llama3-8b-fp16",
+  "started_at": "2026-07-01T12:54:56.701348Z",
+  "ended_at": "2026-07-01T12:55:30.853349Z",
+  "wall_s": 34.163,
+  "exit_code": 1,
+  "interpretation": "windows_paging_file_exhausted_os_error_1455",
+  "peak_child_rss_gib": 0.0242,
+  "trough_sys_available_gib": 1.4652,
+  "sample_count": 18,
+  "sample_interval_s": 2.0,
+  "stderr_tail": "C:\\AI_Agents_MSC_course\\HW5\\.venv\\Lib\\site-packages\\torch\\cuda\\__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.\r\n  import pynvml  # type: ignore[import]\r\n\rLoading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]\rLoading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]\r\n[baseline] FAIL llama3-8b-fp16: OSError: The paging file is too small for this operation to complete. (os error 1455)\r\n",
+  "samples": [
+    {
+      "ts": "2026-07-01T12:54:56.714562Z",
+      "elapsed_s": 0.022,
+      "sys_available_gib": 1.8457,
+      "sys_used_gib": 5.9584,
+      "sys_percent": 76.3,
+      "child_rss_gib": 0.0186
+    },
+    {
+      "ts": "2026-07-01T12:54:58.726857Z",
+      "elapsed_s": 2.028,
+      "sys_available_gib": 1.6717,
+      "sys_used_gib": 6.1323,
+      "sys_percent": 78.6,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:00.732364Z",
+      "elapsed_s": 4.036,
+      "sys_available_gib": 1.6092,
+      "sys_used_gib": 6.1948,
+      "sys_percent": 79.4,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:02.743359Z",
+      "elapsed_s": 6.045,
+      "sys_available_gib": 1.6175,
+      "sys_used_gib": 6.1865,
+      "sys_percent": 79.3,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:04.749528Z",
+      "elapsed_s": 8.053,
+      "sys_available_gib": 1.6192,
+      "sys_used_gib": 6.1849,
+      "sys_percent": 79.3,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:06.756903Z",
+      "elapsed_s": 10.06,
+      "sys_available_gib": 1.6508,
+      "sys_used_gib": 6.1532,
+      "sys_percent": 78.8,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:08.770045Z",
+      "elapsed_s": 12.066,
+      "sys_available_gib": 1.4772,
+      "sys_used_gib": 6.3268,
+      "sys_percent": 81.1,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:10.771424Z",
+      "elapsed_s": 14.075,
+      "sys_available_gib": 1.4652,
+      "sys_used_gib": 6.3388,
+      "sys_percent": 81.2,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:12.781784Z",
+      "elapsed_s": 16.085,
+      "sys_available_gib": 1.4757,
+      "sys_used_gib": 6.3283,
+      "sys_percent": 81.1,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:14.789787Z",
+      "elapsed_s": 18.094,
+      "sys_available_gib": 1.4918,
+      "sys_used_gib": 6.3122,
+      "sys_percent": 80.9,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:16.798415Z",
+      "elapsed_s": 20.102,
+      "sys_available_gib": 1.493,
+      "sys_used_gib": 6.311,
+      "sys_percent": 80.9,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:18.806555Z",
+      "elapsed_s": 22.11,
+      "sys_available_gib": 1.4932,
+      "sys_used_gib": 6.3108,
+      "sys_percent": 80.9,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:20.815012Z",
+      "elapsed_s": 24.119,
+      "sys_available_gib": 1.4973,
+      "sys_used_gib": 6.3067,
+      "sys_percent": 80.8,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:22.823183Z",
+      "elapsed_s": 26.127,
+      "sys_available_gib": 1.5017,
+      "sys_used_gib": 6.3023,
+      "sys_percent": 80.8,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:24.831396Z",
+      "elapsed_s": 28.135,
+      "sys_available_gib": 1.6089,
+      "sys_used_gib": 6.1951,
+      "sys_percent": 79.4,
+      "child_rss_gib": 0.0242
+    },
+    {
+      "ts": "2026-07-01T12:55:26.839946Z",
+      "elapsed_s": 30.143,
+      "sys_available_gib": 1.6482,
+      "sys_used_gib": 6.1558,
+      "sys_percent": 78.9,
+      "child_rss_gib": 0.0241
+    },
+    {
+      "ts": "2026-07-01T12:55:28.847974Z",
+      "elapsed_s": 32.149,
+      "sys_available_gib": 1.5414,
+      "sys_used_gib": 6.2626,
+      "sys_percent": 80.2,
+      "child_rss_gib": 0.0241
+    },
+    {
+      "ts": "2026-07-01T12:55:30.853349Z",
+      "elapsed_s": 34.163,
+      "sys_available_gib": 1.796,
+      "sys_used_gib": 6.008,
+      "sys_percent": 77.0,
+      "child_rss_gib": 0.0
+    }
+  ]
+}

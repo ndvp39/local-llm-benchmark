@@ -45,6 +45,7 @@ def run_baseline(
     runner_factory: Callable[..., BenchmarkRunner] | None = None,
     ram_sampler: Callable[[], MemoryReading] | None = None,
     clock: Callable[[], str] | None = None,
+    skip_preflight: bool = False,
 ) -> BackendRunResult:
     """Run one baseline; rename manifest to ``baseline_<label>_<ts>.json``."""
     targets = {t["label"]: t for t in config.get("target_models", [])}
@@ -62,6 +63,7 @@ def run_baseline(
         target_label=target["label"],
         model_id=target["id"],
         quantization=target["quantization"],
+        skip_preflight=skip_preflight,
     )
     results_dir.mkdir(parents=True, exist_ok=True)
     runner = (runner_factory or BenchmarkRunner)(

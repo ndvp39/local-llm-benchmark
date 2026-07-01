@@ -50,7 +50,7 @@ class _Model:
         return _Tensor(input_ids.shape[-1] + max_new_tokens)
 
 
-def _factory(model_id: str, quantization: str) -> LoadedModel:
+def _factory(model_id: str, quantization: str, **kwargs: Any) -> LoadedModel:
     return LoadedModel(
         model=_Model(), tokenizer=_Tokenizer(),
         resolved_dtype="torch.float16", resolved_device_map="auto",
@@ -63,8 +63,8 @@ class TestBenchmarkRunnerWithDirectBackend:
         self, tmp_path: Path
     ) -> None:
         backend = DirectBackend(
-            target_label="llama3-8b-fp16",
-            model_id="meta-llama/Meta-Llama-3-8B-Instruct",
+            target_label="synthetic-fp16",
+            model_id="ndvp/synthetic-tiny",  # not in HF cache -> pre-flight skips
             quantization=Quant.FP16,
             factory=_factory,
         )
@@ -93,7 +93,7 @@ class TestBenchmarkRunnerWithDirectBackend:
         )
 
         # Result is fully populated (backend's 0.0 placeholders replaced).
-        assert result.target_label == "llama3-8b-fp16"
+        assert result.target_label == "synthetic-fp16"
         assert result.quantization is Quant.FP16
         assert result.completion_text == "integration completion"
         assert result.peak_ram_mb > 0  # sampler ran
@@ -105,7 +105,7 @@ class TestBenchmarkRunnerWithDirectBackend:
         assert manifest_path.exists()
         assert manifest_path.parent == tmp_path
         manifest = json.loads(manifest_path.read_text())
-        assert manifest["target_label"] == "llama3-8b-fp16"
+        assert manifest["target_label"] == "synthetic-fp16"
         assert manifest["backend"] == "direct"
         assert manifest["quantization"] == "fp16"
         assert manifest["seed"] == 42

@@ -1,0 +1,9 @@
+{
+  "target_label": "llama3-8b-fp16",
+  "model_id": "meta-llama/Meta-Llama-3-8B-Instruct",
+  "quantization": "fp16",
+  "status": "failed",
+  "error_type": "MemoryError",
+  "error_message": "Direct baseline pre-flight: meta-llama/Meta-Llama-3-8B-Instruct weights = 14.96 GiB (cached safetensors), available RAM = 1.52 GiB. Naive load would need ~14.96 GiB contiguous, exceeding the 90 % headroom. On Windows the OS kills such allocations at signal level (exit 139) before Python can catch. AirLLM (T-3.1) rescues via per-layer mmap streaming.",
+  "captured_at": "20260701T120918Z"
+}

@@ -1,0 +1,135 @@
+{
+  "target_label": "qwen2-7b-q4",
+  "started_at": "2026-07-01T12:57:40.499996Z",
+  "ended_at": "2026-07-01T12:58:08.865239Z",
+  "wall_s": 28.361,
+  "exit_code": 1,
+  "interpretation": "windows_paging_file_exhausted_os_error_1455",
+  "peak_child_rss_gib": 0.2875,
+  "trough_sys_available_gib": 1.5183,
+  "sample_count": 15,
+  "sample_interval_s": 2.0,
+  "stderr_tail": "C:\\AI_Agents_MSC_course\\HW5\\.venv\\Lib\\site-packages\\torch\\cuda\\__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.\r\n  import pynvml  # type: ignore[import]\r\n\rLoading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]\rLoading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]\r\n[baseline] FAIL qwen2-7b-q4: OSError: The paging file is too small for this operation to complete. (os error 1455)\r\n",
+  "samples": [
+    {
+      "ts": "2026-07-01T12:57:40.530760Z",
+      "elapsed_s": 0.03,
+      "sys_available_gib": 1.7642,
+      "sys_used_gib": 6.0398,
+      "sys_percent": 77.4,
+      "child_rss_gib": 0.0186
+    },
+    {
+      "ts": "2026-07-01T12:57:42.535412Z",
+      "elapsed_s": 2.045,
+      "sys_available_gib": 1.5967,
+      "sys_used_gib": 6.2073,
+      "sys_percent": 79.5,
+      "child_rss_gib": 0.193
+    },
+    {
+      "ts": "2026-07-01T12:57:44.560540Z",
+      "elapsed_s": 4.057,
+      "sys_available_gib": 1.5411,
+      "sys_used_gib": 6.2629,
+      "sys_percent": 80.3,
+      "child_rss_gib": 0.2416
+    },
+    {
+      "ts": "2026-07-01T12:57:46.578594Z",
+      "elapsed_s": 6.085,
+      "sys_available_gib": 1.5252,
+      "sys_used_gib": 6.2788,
+      "sys_percent": 80.5,
+      "child_rss_gib": 0.2579
+    },
+    {
+      "ts": "2026-07-01T12:57:48.605897Z",
+      "elapsed_s": 8.109,
+      "sys_available_gib": 1.5183,
+      "sys_used_gib": 6.2857,
+      "sys_percent": 80.5,
+      "child_rss_gib": 0.2579
+    },
+    {
+      "ts": "2026-07-01T12:57:50.634066Z",
+      "elapsed_s": 10.132,
+      "sys_available_gib": 1.5184,
+      "sys_used_gib": 6.2856,
+      "sys_percent": 80.5,
+      "child_rss_gib": 0.2579
+    },
+    {
+      "ts": "2026-07-01T12:57:52.653657Z",
+      "elapsed_s": 12.155,
+      "sys_available_gib": 1.5203,
+      "sys_used_gib": 6.2837,
+      "sys_percent": 80.5,
+      "child_rss_gib": 0.2579
+    },
+    {
+      "ts": "2026-07-01T12:57:54.678644Z",
+      "elapsed_s": 14.181,
+      "sys_available_gib": 1.5215,
+      "sys_used_gib": 6.2826,
+      "sys_percent": 80.5,
+      "child_rss_gib": 0.2579
+    },
+    {
+      "ts": "2026-07-01T12:57:56.703397Z",
+      "elapsed_s": 16.205,
+      "sys_available_gib": 1.533,
+      "sys_used_gib": 6.271,
+      "sys_percent": 80.4,
+      "child_rss_gib": 0.2579
+    },
+    {
+      "ts": "2026-07-01T12:57:58.726385Z",
+      "elapsed_s": 18.226,
+      "sys_available_gib": 1.5333,
+      "sys_used_gib": 6.2707,
+      "sys_percent": 80.4,
+      "child_rss_gib": 0.2579
+    },
+    {
+      "ts": "2026-07-01T12:58:00.750184Z",
+      "elapsed_s": 20.249,
+      "sys_available_gib": 1.5362,
+      "sys_used_gib": 6.2678,
+      "sys_percent": 80.3,
+      "child_rss_gib": 0.2579
+    },
+    {
+      "ts": "2026-07-01T12:58:02.770543Z",
+      "elapsed_s": 22.272,
+      "sys_available_gib": 1.5367,
+      "sys_used_gib": 6.2673,
+      "sys_percent": 80.3,
+      "child_rss_gib": 0.2579
+    },
+    {
+      "ts": "2026-07-01T12:58:04.793214Z",
+      "elapsed_s": 24.293,
+      "sys_available_gib": 1.554,
+      "sys_used_gib": 6.25,
+      "sys_percent": 80.1,
+      "child_rss_gib": 0.2579
+    },
+    {
+      "ts": "2026-07-01T12:58:06.820458Z",
+      "elapsed_s": 26.316,
+      "sys_available_gib": 1.5309,
+      "sys_used_gib": 6.2731,
+      "sys_percent": 80.4,
+      "child_rss_gib": 0.2875
+    },
+    {
+      "ts": "2026-07-01T12:58:08.865239Z",
+      "elapsed_s": 28.36,
+      "sys_available_gib": 1.7929,
+      "sys_used_gib": 6.0111,
+      "sys_percent": 77.0,
+      "child_rss_gib": 0.0
+    }
+  ]
+}

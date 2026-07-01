@@ -8,23 +8,26 @@ decides a strategy, or formats a number is a bug — push it into the SDK.
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
-from typing import Annotated
-
-import typer
+# CRITICAL LOAD ORDER: .env must load BEFORE `on_prem_llm_lab` is imported,
+# because that package transitively imports `transformers` / `huggingface_hub`
+# which read HF_HOME at *import time* and cache it — a late load_dotenv()
+# leaves HF downloads going to the default C: cache even though the .env
+# says D:. See prompts_book §11.9 for the disk-full incident.
 from dotenv import load_dotenv
 
-from on_prem_llm_lab import (
+load_dotenv()
+
+import os  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Annotated  # noqa: E402
+
+import typer  # noqa: E402
+
+from on_prem_llm_lab import (  # noqa: E402
     EnvironmentNotInitializedError,
     OnPremLlmSDK,
     PlumbingStageError,
 )
-
-# Load .env at CLI startup so HF_TOKEN / ANTHROPIC_API_KEY flow into os.environ
-# without the user having to `set VAR=...` per shell. Secrets stay in the
-# gitignored .env (constitution §6.4). Tests don't import this module.
-load_dotenv()
 
 app = typer.Typer(
     help="On-Premises LLM benchmark lab CLI.",
@@ -121,18 +124,14 @@ def run_plumbing_test(
     raise typer.Exit(0)
 
 
-def _resolve_baseline_targets(
-    sdk: OnPremLlmSDK, target_label: str | None
-) -> list[str]:
+def _resolve_baseline_targets(sdk: OnPremLlmSDK, target_label: str | None) -> list[str]:
     import json as _json  # noqa: PLC0415
     cfg = _json.loads(sdk.config_path.read_text(encoding="utf-8"))
     labels = [t["label"] for t in cfg.get("target_models", [])]
     if target_label is None:
         return labels
     if target_label not in labels:
-        raise typer.BadParameter(
-            f"Unknown target_label {target_label!r}; known: {labels}"
-        )
+        raise typer.BadParameter(f"Unknown target_label {target_label!r}; known: {labels}")
     return [target_label]
 
 
@@ -146,6 +145,11 @@ def run_baseline(
     ] = None,
     config: _ConfigOpt = _DEFAULT_CONFIG,
     repo_root: _RepoRootOpt = None,
+    skip_preflight: Annotated[
+        bool, typer.Option("--skip-preflight",
+            help="Bypass the RAM pre-flight guard — force torch to attempt the naive load.",
+        ),
+    ] = False,
 ) -> None:
     """Direct back-end baseline run (T-2.10 / SC-1) — per target."""
     sdk = OnPremLlmSDK(
@@ -157,7 +161,7 @@ def run_baseline(
     failures = 0
     for label in targets:
         try:
-            result = sdk.run_baseline(label)
+            result = sdk.run_baseline(label, skip_preflight=skip_preflight)
         except EnvironmentNotInitializedError as exc:
             typer.echo(f"FAIL: env not initialised -- {exc}")
             raise typer.Exit(1) from exc

@@ -65,7 +65,7 @@ def _stub_loaded() -> LoadedModel:
 
 
 def _factory_recording(calls: list[tuple[str, str]]) -> Any:
-    def _factory(model_id: str, quantization: str) -> LoadedModel:
+    def _factory(model_id: str, quantization: str, **kwargs: Any) -> LoadedModel:
         calls.append((model_id, quantization))
         return _stub_loaded()
     return _factory
@@ -100,13 +100,13 @@ class TestLoad:
     def test_calls_factory_with_model_id_and_quant_label(self) -> None:
         calls: list[tuple[str, str]] = []
         be = DirectBackend(
-            target_label="llama3-8b-fp16",
-            model_id="meta-llama/Meta-Llama-3-8B-Instruct",
+            target_label="synthetic-fp16",
+            model_id="ndvp/synthetic-tiny",  # not in HF cache -> pre-flight skips
             quantization=Quant.FP16,
             factory=_factory_recording(calls),
         )
         be.load()
-        assert calls == [("meta-llama/Meta-Llama-3-8B-Instruct", "fp16")]
+        assert calls == [("ndvp/synthetic-tiny", "fp16")]
 
     def test_load_is_idempotent(self) -> None:
         calls: list[tuple[str, str]] = []
@@ -132,8 +132,8 @@ class TestGenerate:
         # t0=0, t_first=0.1, t_last=1.1 -> TTFT=100, wall=1.1.
         clock = _StepClock([0.0, 0.1, 1.1])
         be = DirectBackend(
-            target_label="llama3-8b-fp16",
-            model_id="meta-llama/Meta-Llama-3-8B-Instruct",
+            target_label="synthetic-fp16",
+            model_id="ndvp/synthetic-tiny",  # not in HF cache -> pre-flight skips
             quantization=Quant.FP16,
             factory=_factory_recording([]), clock=clock,
         )
@@ -141,8 +141,8 @@ class TestGenerate:
         result = be.generate("Hello", max_new_tokens=4, params={})
         assert isinstance(result, BackendRunResult)
         assert result.backend is BackendId.DIRECT
-        assert result.target_label == "llama3-8b-fp16"
-        assert result.model_id == "meta-llama/Meta-Llama-3-8B-Instruct"
+        assert result.target_label == "synthetic-fp16"
+        assert result.model_id == "ndvp/synthetic-tiny"
         assert result.quantization is Quant.FP16
         assert result.prompt_tokens == 8
         assert result.completion_tokens == 4
@@ -160,7 +160,7 @@ class TestGenerate:
         factory_calls: list[tuple[str, str]] = []
         stub_model = _StubModel()
 
-        def factory(model_id: str, quantization: str) -> LoadedModel:
+        def factory(model_id: str, quantization: str, **kwargs: Any) -> LoadedModel:
             factory_calls.append((model_id, quantization))
             return LoadedModel(
                 model=stub_model, tokenizer=_StubTokenizer(),
