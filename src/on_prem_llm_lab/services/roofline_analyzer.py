@@ -100,13 +100,14 @@ def analyze_row(
     ridge = ridge_intensity(ceilings.peak_compute_gflops, beta)
     ceiling = min(ceilings.peak_compute_gflops, beta / 1e9 * intensity)
     wall_share = None
-    wall_s = row.get("wall_s_mean")
-    if backend == "airllm" and wall_s is not None:
+    if backend == "airllm" and tpot_s > 0:
+        # Per-token: disk_time / TPOT — the "what fraction of each token's
+        # wall went to reading weights from D:?" question. Prior version
+        # divided by total wall (many tokens) — under-reported by Mx.
         try:
             wall_share = wall_share_disk_pct(
                 n_params_billion, bit,
-                ceilings.peak_disk_bandwidth_mbps * 1e6,
-                float(wall_s),
+                ceilings.peak_disk_bandwidth_mbps * 1e6, tpot_s,
             )
         except (ValueError, ZeroDivisionError):
             wall_share = None
