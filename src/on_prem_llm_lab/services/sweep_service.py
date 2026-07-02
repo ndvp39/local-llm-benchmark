@@ -32,10 +32,15 @@ def build_default_cell_runner(
         backend: str, max_new_tokens: int, prompt: str,
     ) -> BackendRunResult:
         if backend == "airllm":
+            # Per-target subdir so different targets don't collide on the
+            # `splitted_model/` shard cache (see T-3.6b: Qwen tried to load
+            # its weights into Llama-shaped cached shards). Config
+            # `layer_shards_saving_path` stays under D: — subdirs land there.
+            per_target_shards = str(Path(shards_path) / target_label)
             be: Any = AirLLMBackend(
                 target_label=target_label, model_id=model_id,
                 quantization=quantization,
-                layer_shards_saving_path=shards_path,
+                layer_shards_saving_path=per_target_shards,
                 hf_token=hf_token,
             )
         elif backend == "direct":

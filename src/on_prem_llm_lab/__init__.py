@@ -16,6 +16,15 @@ from dotenv import load_dotenv as _load_dotenv
 
 _load_dotenv(override=True)
 
+# Monkey-patch AirLLM utils to use CPU device when torch.cuda.is_available()
+# is False. Upstream airllm v2.11 hardcodes device="cuda" and .cuda() calls
+# in utils.py:92,94,105-107,162,169 for its NF4/int8 compression paths;
+# bitsandbytes 0.49+ has a working CPU backend, so the only real blocker is
+# AirLLM's hardcoded device pin. See shared/airllm_cpu_patch.py.
+from on_prem_llm_lab.shared.airllm_cpu_patch import apply_cpu_patch as _apply  # noqa: E402
+
+_apply()
+
 from on_prem_llm_lab.sdk import (  # noqa: E402
     EnvironmentNotInitializedError,
     OnPremLlmSDK,

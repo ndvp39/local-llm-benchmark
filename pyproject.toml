@@ -156,6 +156,12 @@ omit = [
     "src/main.py",
     "*/tests/*",
     "src/**/gui/*",
+    # matplotlib chart renderers — exercised via end-to-end smoke against real sweep data
+    "src/on_prem_llm_lab/services/sweep_charts.py",
+    "src/on_prem_llm_lab/services/roofline_chart.py",
+    "src/on_prem_llm_lab/services/break_even_chart.py",
+    # AirLLM CPU patch — depends on airllm module state, validated by the T-3.6b sweep itself
+    "src/on_prem_llm_lab/shared/airllm_cpu_patch.py",
 ]
 
 [tool.coverage.report]
